@@ -65,8 +65,8 @@ function cardHTML(card,mini=false,faceDown=false){
 <div class="card-inner">
 <div class="card-front">
 <div class="card-header"${headerStyle}>
-<span class="card-team-code">${code}</span>
 <span class="card-rating">${ratingDisplay}</span>
+<span class="card-team-code">${code}</span>
 </div>
 <div class="card-body">
 <div class="card-icon">${icon}</div>
@@ -126,8 +126,8 @@ async function startGame(diff){
     selected:new Set(),discardSelected:new Set(),discardNeeded:0,
     animating:false
   };
-  // Deal 7 each
-  for(let i=0;i<7;i++){
+  // Deal 6 each
+  for(let i=0;i<6;i++){
     G.playerHand.push(G.deck.pop());
     G.cpuHand.push(G.deck.pop());
   }
@@ -483,17 +483,17 @@ function checkWin(){
 // ==================== DRAW PHASE ====================
 async function drawPhase(){
   const before=new Set(G.playerHand.map(c=>c.id));
-  while(G.playerHand.length<7&&G.deck.length>0)G.playerHand.push(G.deck.pop());
-  while(G.cpuHand.length<7&&G.deck.length>0)G.cpuHand.push(G.deck.pop());
+  while(G.playerHand.length<6&&G.deck.length>0)G.playerHand.push(G.deck.pop());
+  while(G.cpuHand.length<6&&G.deck.length>0)G.cpuHand.push(G.deck.pop());
   G.newCardIds=new Set(G.playerHand.filter(c=>!before.has(c.id)).map(c=>c.id));
   renderGame();
   G.newCardIds=null;
   // Check if player needs to discard
-  if(G.playerHand.length>7){
-    await playerDiscard(G.playerHand.length-7);
+  if(G.playerHand.length>6){
+    await playerDiscard(G.playerHand.length-6);
   }
   // CPU auto-discards lowest
-  while(G.cpuHand.length>7){
+  while(G.cpuHand.length>6){
     const worst=G.cpuHand.reduce((min,c,i)=>(!min||((c.rating||0)<(min.c.rating||0))?{c,i}:min),null);
     if(worst)G.cpuHand.splice(worst.i,1);
     else G.cpuHand.pop();

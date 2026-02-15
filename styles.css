@@ -147,7 +147,7 @@ background:var(--bg2);border-top:1px solid var(--bg4);
 /* === CARDS === */
 .card{
 width:80px;height:112px;border-radius:7px;flex-shrink:0;cursor:pointer;
-position:relative;perspective:600px;margin-left:-14px;
+position:relative;perspective:600px;margin-left:-20px;
 transition:transform .25s var(--ease),z-index 0s .25s,margin .25s var(--ease);
 }
 .card:first-child{margin-left:0}
