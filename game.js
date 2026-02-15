@@ -135,7 +135,7 @@ async function startGame(diff){
   renderGame();
   await wait(500);
   await coinToss();
-  nextBaza();
+  await nextBaza();
 }
 
 async function continueGame(){
@@ -175,7 +175,7 @@ async function coinToss(){
 }
 
 // ==================== GAME FLOW ====================
-function nextBaza(){
+async function nextBaza(){
   G.bazaNum++;
   G.playerPlay=[];G.cpuPlay=[];
   G.selected=new Set();
@@ -184,7 +184,15 @@ function nextBaza(){
   renderGame();
   if(!G.playerFirst){
     G.animating=true;
-    setTimeout(()=>{cpuTurn();G.animating=false;G.turnIndicator='player';renderGame()},800);
+    await wait(800);
+    cpuTurn();
+    renderCpuPlay();
+    renderRivalHand();
+    await wait(600);
+    G.animating=false;
+    G.turnIndicator='player';
+    renderScoreboard();
+    renderHand();
   }
 }
 
@@ -243,21 +251,23 @@ async function playSelected(){
   if(G.animating||G.selected.size===0||!validateSelection())return;
   G.animating=true;
   G.turnIndicator=null;
+  renderScoreboard();
   vibrate(50);
   const playCards=[...G.selected].map(id=>G.playerHand.find(c=>c.id===id)).filter(Boolean);
   G.playerPlay=playCards;
   G.playerHand=G.playerHand.filter(c=>!G.selected.has(c.id));
   G.selected=new Set();
-  // Handle pre-play events (swap, steal)
   await handlePreEvents(playCards,'player');
   renderPlayerPlay();
   renderHand();
   if(G.cpuPlay.length===0){
-    // CPU hasn't played yet
-    await wait(600);
+    G.turnIndicator='cpu';
+    renderScoreboard();
+    await wait(800);
     cpuTurn();
     renderCpuPlay();
-    await wait(400);
+    renderRivalHand();
+    await wait(600);
   }
   await resolveBaza();
   G.animating=false;
@@ -446,7 +456,7 @@ async function resolveBaza(){
   // Draw phase
   await drawPhase();
   saveGame();
-  nextBaza();
+  await nextBaza();
 }
 
 function calcScore(cards){
@@ -635,9 +645,27 @@ function renderCpuPlay(){
   }).join('');
 }
 
+function animateScore(el,target){
+  const start=parseInt(el.textContent)||0;
+  if(target===start)return;
+  el.classList.remove('score-bump');
+  void el.offsetWidth;
+  el.classList.add('score-bump');
+  const diff=target-start;
+  const duration=400;
+  const t0=performance.now();
+  function tick(now){
+    const p=Math.min((now-t0)/duration,1);
+    const e=1-Math.pow(1-p,3);
+    el.textContent=Math.round(start+diff*e);
+    if(p<1)requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
 function renderScoreboard(){
-  $('#sc-player').textContent=G.playerScore;
-  $('#sc-cpu').textContent=G.cpuScore;
+  animateScore($('#sc-player'),G.playerScore);
+  animateScore($('#sc-cpu'),G.cpuScore);
   $('#sc-bazas').textContent=`Baza ${G.bazaNum} \u00B7 ${G.playerBazas}-${G.cpuBazas}`;
   const streak=G.playerStreak>1?`Racha: ${G.playerStreak}`:G.cpuStreak>1?`Racha CPU: ${G.cpuStreak}`:'';
   $('#sc-streak').textContent=streak;
