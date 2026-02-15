@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0B1120">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Soccer Cards · La Liga 25/26</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;600;700&family=Barlow+Condensed:wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#0B1120;--bg2:#131B2E;--bg3:#1A2540;--bg4:#222D47;
+--gold:#D4AF37;--gold2:#F5D76E;--gold3:#A68523;
+--red:#E63946;--green:#2ECC71;--blue:#3498DB;--purple:#9B59B6;
+--text:#F0F0F0;--text2:#8892A7;--text3:#5A6478;
+--card-bg:#F5F0E1;--card2:#E8E0C8;
+--font-d:'Teko','Impact','Arial Black',sans-serif;
+--font-b:'Barlow Condensed','Arial Narrow','Helvetica Neue',sans-serif;
+--ease:cubic-bezier(.4,0,.2,1);
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font-b);-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+body{
+background-image:
+  radial-gradient(ellipse at 50% 0%,rgba(20,50,20,.25) 0%,transparent 60%),
+  repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,255,65,.015) 3px,rgba(0,255,65,.015) 6px);
+}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;transition:opacity .4s var(--ease),transform .4s var(--ease);z-index:1}
+.screen.hidden{opacity:0;pointer-events:none;transform:scale(.96)}
+.screen.active{opacity:1;pointer-events:auto;transform:scale(1)}
+
+/* === MENU === */
+#menu{justify-content:center;gap:16px;padding:20px}
+.logo{font-family:var(--font-d);font-size:64px;font-weight:700;line-height:1;color:var(--gold);text-shadow:0 0 40px rgba(212,175,55,.4),0 4px 0 var(--gold3);letter-spacing:2px;text-align:center;animation:logoGlow 3s ease-in-out infinite alternate}
+.logo-sub{font-family:var(--font-d);font-size:22px;color:var(--text2);letter-spacing:8px;text-transform:uppercase;text-align:center;margin-top:-4px}
+@keyframes logoGlow{0%{text-shadow:0 0 20px rgba(212,175,55,.3),0 4px 0 var(--gold3)}100%{text-shadow:0 0 60px rgba(212,175,55,.6),0 4px 0 var(--gold3)}}
+.menu-cards{display:flex;justify-content:center;gap:-10px;margin:20px 0 10px;position:relative;height:100px}
+.menu-card{width:65px;height:91px;border-radius:6px;position:absolute;box-shadow:0 4px 15px var(--bg);transition:transform .3s var(--ease)}
+.menu-card:nth-child(1){background:linear-gradient(135deg,#A50044,#004D98);transform:rotate(-15deg) translateX(-70px)}
+.menu-card:nth-child(2){background:linear-gradient(135deg,#fff,#D4AF37);transform:rotate(0deg);z-index:1}
+.menu-card:nth-child(3){background:linear-gradient(135deg,#CE3524,#27447E);transform:rotate(15deg) translateX(70px)}
+.menu-card .mc-inner{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:30px;border-radius:6px;border:2px solid rgba(255,255,255,.2)}
+.btn{
+font-family:var(--font-d);font-size:24px;font-weight:600;letter-spacing:1px;
+width:260px;padding:14px 0;border:none;border-radius:10px;cursor:pointer;
+transition:transform .15s var(--ease),box-shadow .15s var(--ease);text-transform:uppercase;
+}
+.btn:active{transform:scale(.96)}
+.btn-primary{background:linear-gradient(135deg,var(--gold),var(--gold3));color:#1a1a2e;box-shadow:0 4px 20px rgba(212,175,55,.4)}
+.btn-primary:active{box-shadow:0 2px 10px rgba(212,175,55,.3)}
+.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--bg4)}
+.btn-secondary:active{background:var(--bg4)}
+.btn-disabled{opacity:.4;pointer-events:none}
+.menu-footer{font-size:13px;color:var(--text3);margin-top:auto;padding-bottom:20px;text-align:center}
+.menu-btns{display:flex;flex-direction:column;gap:10px;align-items:center;margin-top:10px}
+
+/* === DIFFICULTY === */
+#difficulty{justify-content:center;gap:20px;padding:20px}
+.diff-title{font-family:var(--font-d);font-size:36px;color:var(--gold)}
+.diff-cards{display:flex;flex-direction:column;gap:12px;width:100%;max-width:300px}
+.diff-card{
+background:var(--bg2);border:1px solid var(--bg4);border-radius:12px;padding:16px 20px;
+cursor:pointer;transition:all .2s var(--ease);
+}
+.diff-card:active{transform:scale(.97);border-color:var(--gold)}
+.diff-card h3{font-family:var(--font-d);font-size:26px;margin-bottom:2px}
+.diff-card p{font-size:14px;color:var(--text2)}
+.diff-easy h3{color:var(--green)}
+.diff-normal h3{color:var(--gold)}
+.diff-hard h3{color:var(--red)}
+
+/* === RULES === */
+#rules{padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.rules-content{max-width:380px;width:100%}
+.rules-content h2{font-family:var(--font-d);font-size:32px;color:var(--gold);margin-bottom:12px}
+.rules-content h3{font-family:var(--font-d);font-size:22px;color:var(--gold2);margin:16px 0 6px}
+.rules-content p,.rules-content li{font-size:14px;line-height:1.5;color:var(--text2);margin-bottom:6px}
+.rules-content ul{padding-left:18px}
+.rules-back{position:sticky;top:0;padding:10px 0;z-index:2}
+
+/* === STATS === */
+#stats{justify-content:center;gap:16px;padding:20px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:300px}
+.stat-box{background:var(--bg2);border-radius:10px;padding:14px;text-align:center;border:1px solid var(--bg4)}
+.stat-box .sv{font-family:var(--font-d);font-size:40px;font-weight:700;color:var(--gold)}
+.stat-box .sl{font-size:13px;color:var(--text2);margin-top:2px}
+
+/* === GAME === */
+#game{padding:0;gap:0;justify-content:space-between}
+.rival-area{
+width:100%;padding:8px 10px;display:flex;justify-content:center;gap:-8px;
+background:linear-gradient(180deg,rgba(0,0,0,.3),transparent);min-height:56px;
+}
+.rival-card-back{
+width:36px;height:50px;border-radius:4px;background:var(--bg3);
+border:1.5px solid var(--bg4);margin-left:-8px;flex-shrink:0;
+display:flex;align-items:center;justify-content:center;font-size:14px;
+background-image:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(212,175,55,.07) 3px,rgba(212,175,55,.07) 6px);
+}
+.rival-card-back:first-child{margin-left:0}
+.scoreboard{
+width:100%;padding:6px 12px;display:flex;justify-content:space-between;align-items:center;
+background:var(--bg2);border-bottom:1px solid var(--bg4);font-family:var(--font-d);
+}
+.score-player,.score-cpu{display:flex;flex-direction:column;align-items:center;gap:0}
+.score-label{font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
+.score-value{font-size:30px;font-weight:700;line-height:1}
+.score-player .score-value{color:var(--green)}
+.score-cpu .score-value{color:var(--red)}
+.score-center{display:flex;flex-direction:column;align-items:center;gap:1px}
+.score-bazas{font-size:14px;color:var(--text2)}
+.score-streak{font-size:11px;color:var(--gold)}
+.deck-indicator{font-size:12px;color:var(--text3);text-align:center;padding:2px 0}
+
+.play-zone{
+flex:1;width:100%;display:flex;justify-content:center;align-items:center;gap:12px;
+position:relative;overflow:hidden;min-height:140px;
+}
+.play-side{
+display:flex;flex-direction:column;align-items:center;gap:4px;min-width:45%;
+}
+.play-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;font-family:var(--font-d)}
+.play-cards{display:flex;flex-wrap:wrap;justify-content:center;gap:4px}
+.play-vs{font-family:var(--font-d);font-size:28px;color:var(--gold);opacity:.5}
+.play-result{
+position:absolute;font-family:var(--font-d);font-size:42px;font-weight:700;
+opacity:0;transform:scale(0);transition:all .5s var(--ease);z-index:10;
+text-shadow:0 0 30px currentColor;
+}
+.play-result.show{opacity:1;transform:scale(1)}
+.play-result.win{color:var(--green)}
+.play-result.lose{color:var(--red)}
+.play-result.draw{color:var(--gold)}
+
+.player-hand-area{width:100%;background:linear-gradient(0deg,rgba(0,0,0,.4),transparent);padding:6px 0 0}
+.hand-scroll{
+display:flex;overflow-x:auto;padding:6px 10px 4px;gap:0;
+-webkit-overflow-scrolling:touch;scroll-behavior:smooth;
+scrollbar-width:none;
+}
+.hand-scroll::-webkit-scrollbar{display:none}
+
+.action-bar{
+width:100%;padding:6px 16px 12px;display:flex;gap:8px;justify-content:center;
+background:var(--bg2);border-top:1px solid var(--bg4);
+}
+.action-bar .btn{width:auto;flex:1;max-width:200px;padding:10px 16px;font-size:20px}
+
+/* === CARDS === */
+.card{
+width:80px;height:112px;border-radius:7px;flex-shrink:0;cursor:pointer;
+position:relative;perspective:600px;margin-left:-14px;
+transition:transform .25s var(--ease),z-index 0s .25s,margin .25s var(--ease);
+}
+.card:first-child{margin-left:0}
+.card.selected{transform:translateY(-18px) scale(1.08);z-index:20;margin-left:-6px;margin-right:8px}
+.card-inner{
+width:100%;height:100%;position:relative;transform-style:preserve-3d;
+border-radius:7px;box-shadow:0 2px 8px rgba(0,0,0,.5);
+}
+.card-front{
+position:absolute;inset:0;border-radius:7px;overflow:hidden;
+background:var(--card-bg);display:flex;flex-direction:column;
+backface-visibility:hidden;
+}
+.card-back{
+position:absolute;inset:0;border-radius:7px;
+background:var(--bg3);
+background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(212,175,55,.08) 4px,rgba(212,175,55,.08) 8px);
+border:2px solid var(--bg4);display:flex;align-items:center;justify-content:center;font-size:20px;
+backface-visibility:hidden;transform:rotateY(180deg);
+}
+.card-header{
+padding:3px 6px;display:flex;justify-content:space-between;align-items:center;
+font-family:var(--font-d);color:#fff;min-height:22px;
+}
+.card-team-code{font-size:11px;font-weight:600;letter-spacing:1px;opacity:.9;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+.card-rating{
+font-size:18px;font-weight:700;line-height:1;
+background:rgba(0,0,0,.3);border-radius:4px;padding:1px 4px;min-width:26px;text-align:center;
+}
+.card-body{
+flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+padding:4px 4px 6px;background:var(--card-bg);gap:2px;
+}
+.card-icon{font-size:22px;line-height:1}
+.card-name{
+font-size:11px;font-weight:600;text-align:center;color:#1a1a2e;
+line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;
+display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+}
+.card-team-name{font-size:9px;color:#666;text-align:center}
+.card-type-badge{
+position:absolute;top:24px;right:3px;font-size:8px;font-family:var(--font-d);
+background:rgba(0,0,0,.6);color:#fff;padding:1px 4px;border-radius:3px;
+letter-spacing:.5px;text-transform:uppercase;
+}
+
+/* Special card styles */
+.card.type-shield .card-inner{box-shadow:0 2px 12px rgba(212,175,55,.4)}
+.card.type-shield .card-body{background:linear-gradient(180deg,#FFF8E7,#F5E6B0)}
+.card.type-coach .card-body{background:linear-gradient(180deg,#F0F0F0,#D5D5D5)}
+.card.type-legend .card-inner{box-shadow:0 2px 15px rgba(212,175,55,.6)}
+.card.type-legend .card-body{background:linear-gradient(135deg,#FFF8E7,#F5D76E,#FFF8E7);background-size:300% 300%;animation:holoShimmer 4s ease infinite}
+@keyframes holoShimmer{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+
+.card.type-event .card-header{background:var(--bg3)!important}
+.card.type-event .card-body{background:linear-gradient(180deg,#E8E0C8,#D8CEB0)}
+.card.type-event .card-name{font-size:10px}
+.card.type-event-swap .card-header{background:var(--blue)!important}
+.card.type-event-steal .card-header{background:var(--purple)!important}
+.card.type-event-yellow .card-header{background:#F39C12!important}
+.card.type-event-red .card-header{background:var(--red)!important}
+.card.type-event-talk .card-header{background:var(--green)!important}
+
+.card-mini{width:52px;height:73px}
+.card-mini .card-header{padding:2px 4px;min-height:16px}
+.card-mini .card-team-code{font-size:8px}
+.card-mini .card-rating{font-size:13px;padding:0 3px;min-width:20px}
+.card-mini .card-icon{font-size:16px}
+.card-mini .card-name{font-size:8px}
+.card-mini .card-team-name{font-size:7px}
+.card-mini .card-type-badge{font-size:6px;top:18px;right:2px}
+
+/* === END SCREEN === */
+#endgame{justify-content:center;gap:16px;padding:20px}
+.end-result{font-family:var(--font-d);font-size:52px;font-weight:700;text-shadow:0 0 40px currentColor}
+.end-result.victory{color:var(--green)}
+.end-result.defeat{color:var(--red)}
+.end-stats{display:flex;flex-direction:column;gap:8px;width:100%;max-width:300px}
+.end-stat{display:flex;justify-content:space-between;font-size:16px;color:var(--text2);border-bottom:1px solid var(--bg3);padding:6px 0}
+.end-stat span:last-child{color:var(--text);font-weight:600}
+
+/* === COIN TOSS === */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;gap:16px;opacity:0;pointer-events:none;transition:opacity .3s}
+.overlay.show{opacity:1;pointer-events:auto}
+.coin{
+width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold3));
+display:flex;align-items:center;justify-content:center;
+font-family:var(--font-d);font-size:28px;font-weight:700;color:#1a1a2e;
+box-shadow:0 0 30px rgba(212,175,55,.5);
+}
+.coin.spinning{animation:coinSpin 2s ease-out}
+@keyframes coinSpin{
+0%{transform:rotateX(0)}
+80%{transform:rotateX(2520deg)}
+100%{transform:rotateX(2880deg)}
+}
+.overlay-text{font-family:var(--font-d);font-size:24px;color:var(--gold);text-align:center}
+.overlay-sub{font-size:14px;color:var(--text2);text-align:center}
+
+/* === MSG OVERLAY (in-game messages) === */
+.msg-overlay{
+position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+z-index:50;pointer-events:none;
+}
+.msg-text{
+font-family:var(--font-d);font-size:36px;font-weight:700;
+opacity:0;transform:scale(.5);transition:all .4s var(--ease);
+text-shadow:0 0 20px currentColor;
+}
+.msg-text.show{opacity:1;transform:scale(1)}
+
+/* === DISCARD OVERLAY === */
+.discard-overlay{
+position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:80;
+display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+opacity:0;pointer-events:none;transition:opacity .3s;padding:16px;
+}
+.discard-overlay.show{opacity:1;pointer-events:auto}
+.discard-title{font-family:var(--font-d);font-size:24px;color:var(--red)}
+.discard-hand{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.discard-hand .card{margin-left:0}
+
+/* === ANIMATIONS === */
+@keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes slideDown{from{transform:translateY(-40px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes confetti{
+0%{transform:translateY(0) rotate(0);opacity:1}
+100%{transform:translateY(100vh) rotate(720deg);opacity:0}
+}
+.confetti-particle{
+position:fixed;width:8px;height:8px;top:-10px;z-index:200;
+border-radius:2px;animation:confetti 3s ease-out forwards;
+}
+
+/* Stagger for menu buttons */
+.menu-btns .btn{animation:slideUp .5s var(--ease) backwards}
+.menu-btns .btn:nth-child(1){animation-delay:.1s}
+.menu-btns .btn:nth-child(2){animation-delay:.2s}
+.menu-btns .btn:nth-child(3){animation-delay:.3s}
+.menu-btns .btn:nth-child(4){animation-delay:.4s}
+
+/* Error shake */
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.shake{animation:shake .4s ease}
+</style>
+</head>
+<body>
+
+<!-- MENU -->
+<div id="menu" class="screen active">
+  <div class="menu-cards">
+    <div class="menu-card"><div class="mc-inner">&#9917;</div></div>
+    <div class="menu-card"><div class="mc-inner">&#11088;</div></div>
+    <div class="menu-card"><div class="mc-inner">&#9917;</div></div>
+  </div>
+  <div class="logo">SOCCER<br>CARDS</div>
+  <div class="logo-sub">La Liga 25/26</div>
+  <div class="menu-btns">
+    <button class="btn btn-primary" onclick="showScreen('difficulty')">Nueva Partida</button>
+    <button class="btn btn-secondary" id="btn-continue" onclick="continueGame()">Continuar</button>
+    <button class="btn btn-secondary" onclick="showScreen('rules')">Reglas</button>
+    <button class="btn btn-secondary" onclick="showScreen('stats')">Estadisticas</button>
+  </div>
+  <div class="menu-footer">v1.0 &middot; 580 cartas &middot; 20 equipos reales</div>
+</div>
+
+<!-- DIFFICULTY -->
+<div id="difficulty" class="screen hidden">
+  <div class="diff-title">Dificultad</div>
+  <div class="diff-cards">
+    <div class="diff-card diff-easy" onclick="startGame('easy')">
+      <h3>&#127811; Facil</h3>
+      <p>El bot juega de forma basica. Ideal para aprender.</p>
+    </div>
+    <div class="diff-card diff-normal" onclick="startGame('normal')">
+      <h3>&#9917; Normal</h3>
+      <p>El bot busca combos y usa eventos con cabeza.</p>
+    </div>
+    <div class="diff-card diff-hard" onclick="startGame('hard')">
+      <h3>&#128293; Dificil</h3>
+      <p>El bot optimiza cada jugada. Solo para expertos.</p>
+    </div>
+  </div>
+  <button class="btn btn-secondary" onclick="showScreen('menu')" style="margin-top:16px">Volver</button>
+</div>
+
+<!-- RULES -->
+<div id="rules" class="screen hidden">
+  <div class="rules-content">
+    <div class="rules-back"><button class="btn btn-secondary" onclick="showScreen('menu')" style="width:120px;font-size:18px;padding:8px">Volver</button></div>
+    <h2>Reglas del Juego</h2>
+    <h3>Objetivo</h3>
+    <p>Gana alcanzando 1000 puntos, ganando 10 bazas o 7 bazas consecutivas.</p>
+    <h3>Preparacion</h3>
+    <p>Se reparten 7 cartas a cada jugador del mazo de 580 cartas.</p>
+    <h3>Turno</h3>
+    <p>Cada jugador selecciona y juega cartas de su mano. Se comparan puntuaciones y el que mas tenga gana la baza.</p>
+    <h3>Combos de Equipo</h3>
+    <ul>
+      <li>Juega varias cartas del MISMO equipo: sus valores se suman</li>
+      <li>Incluye el ESCUDO del equipo: puntuacion total x2</li>
+      <li>Incluye el ENTRENADOR: elimina una carta rival de la baza</li>
+    </ul>
+    <h3>Cartas Especiales</h3>
+    <ul>
+      <li><b>Escudo</b> &#128737; - Duplica puntuacion del combo de su equipo</li>
+      <li><b>Entrenador</b> &#128203; - Elimina la mejor carta rival de la baza</li>
+      <li><b>Leyenda</b> &#11088; - Jugador historico con alto valor</li>
+    </ul>
+    <h3>Cartas de Evento</h3>
+    <ul>
+      <li><b>Cambio de campo</b> &#128260; - Intercambia manos con el rival</li>
+      <li><b>Robo de balon</b> &#128400; - Roba 1 carta aleatoria del rival</li>
+      <li><b>Tarjeta amarilla</b> &#129000; - Rival pierde 5 puntos en la baza</li>
+      <li><b>Tarjeta roja</b> &#129001; - Puntuacion rival se divide entre 2</li>
+      <li><b>Charla del descanso</b> &#128172; - +1 punto por cada carta de jugador que juegues</li>
+    </ul>
+    <h3>Fin de Baza</h3>
+    <p>Tras comparar, ambos roban hasta tener 7 cartas. Las cartas jugadas se descartan permanentemente.</p>
+    <h3>Puntuacion</h3>
+    <p>Se suman los valores de las cartas jugadas. El ganador recibe +1 punto de bonificacion.</p>
+  </div>
+</div>
+
+<!-- STATS -->
+<div id="stats" class="screen hidden">
+  <div class="diff-title">Estadisticas</div>
+  <div class="stat-grid">
+    <div class="stat-box"><div class="sv" id="stat-wins">0</div><div class="sl">Victorias</div></div>
+    <div class="stat-box"><div class="sv" id="stat-losses">0</div><div class="sl">Derrotas</div></div>
+    <div class="stat-box"><div class="sv" id="stat-bazas">0</div><div class="sl">Bazas ganadas</div></div>
+    <div class="stat-box"><div class="sv" id="stat-best">0</div><div class="sl">Mejor racha</div></div>
+    <div class="stat-box"><div class="sv" id="stat-played">0</div><div class="sl">Partidas</div></div>
+    <div class="stat-box"><div class="sv" id="stat-pts">0</div><div class="sl">Max puntos</div></div>
+  </div>
+  <button class="btn btn-secondary" onclick="showScreen('menu')" style="margin-top:20px">Volver</button>
+  <button class="btn btn-secondary" onclick="resetStats()" style="margin-top:8px;font-size:16px;padding:8px;width:180px;color:var(--red)">Borrar estadisticas</button>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen hidden">
+  <div class="rival-area" id="rival-hand"></div>
+  <div class="scoreboard">
+    <div class="score-player">
+      <span class="score-label">Tu</span>
+      <span class="score-value" id="sc-player">0</span>
+    </div>
+    <div class="score-center">
+      <span class="score-bazas" id="sc-bazas">Baza 1</span>
+      <span class="score-streak" id="sc-streak"></span>
+      <span class="deck-indicator" id="sc-deck">Mazo: 0</span>
+    </div>
+    <div class="score-cpu">
+      <span class="score-label">CPU</span>
+      <span class="score-value" id="sc-cpu">0</span>
+    </div>
+  </div>
+  <div class="play-zone" id="play-zone">
+    <div class="play-side" id="pz-player"><div class="play-label">Tu jugada</div><div class="play-cards" id="pzc-player"></div></div>
+    <div class="play-vs">VS</div>
+    <div class="play-side" id="pz-cpu"><div class="play-label">CPU</div><div class="play-cards" id="pzc-cpu"></div></div>
+    <div class="play-result" id="play-result"></div>
+  </div>
+  <div class="player-hand-area">
+    <div class="hand-scroll" id="player-hand"></div>
+  </div>
+  <div class="action-bar">
+    <button class="btn btn-secondary" onclick="showGameMenu()" style="max-width:60px;font-size:16px">&#9776;</button>
+    <button class="btn btn-primary btn-disabled" id="btn-play" onclick="playSelected()">Jugar</button>
+  </div>
+</div>
+
+<!-- END GAME -->
+<div id="endgame" class="screen hidden">
+  <div class="end-result" id="end-title"></div>
+  <div class="end-stats" id="end-stats"></div>
+  <div class="menu-btns" style="margin-top:12px">
+    <button class="btn btn-primary" onclick="showScreen('difficulty')">Revancha</button>
+    <button class="btn btn-secondary" onclick="showScreen('menu')">Menu</button>
+  </div>
+</div>
+
+<!-- OVERLAYS -->
+<div class="overlay" id="coin-overlay">
+  <div class="coin" id="coin-face">?</div>
+  <div class="overlay-text" id="coin-text">Lanzando moneda...</div>
+  <div class="overlay-sub" id="coin-sub"></div>
+</div>
+
+<div class="overlay" id="game-menu-overlay">
+  <div class="diff-title" style="margin-bottom:12px">Pausa</div>
+  <button class="btn btn-primary" onclick="hideGameMenu()" style="margin-bottom:8px">Continuar</button>
+  <button class="btn btn-secondary" onclick="saveAndQuit()">Guardar y salir</button>
+</div>
+
+<div class="discard-overlay" id="discard-overlay">
+  <div class="discard-title">Descarta <span id="discard-count">0</span> carta(s)</div>
+  <div class="discard-hand" id="discard-hand"></div>
+  <button class="btn btn-primary btn-disabled" id="btn-discard" onclick="confirmDiscard()">Confirmar</button>
+</div>
+
+<div class="overlay" id="event-overlay">
+  <div class="overlay-text" id="event-text"></div>
+  <div class="overlay-sub" id="event-sub"></div>
+</div>
+
+<script>
+/* ============================================================
+   SOCCER CARDS - LA LIGA 2025/26
+   Complete card game: 580 cards, 20 real teams, offline-ready
+   ============================================================ */
+
+// ==================== TEAM DATA ====================
+const TEAMS=[
+{n:"Real Madrid",c:"RMA",c1:"#FFFFFF",c2:"#D4AF37",co:"Xabi Alonso",l:["Alfredo Di Stefano",97],p:[
+["Thibaut Courtois",89],["Andriy Lunin",80],["Dani Carvajal",85],["Eder Militao",86],["Antonio Rudiger",85],["David Alaba",82],["Ferland Mendy",82],["Trent Alexander-Arnold",87],["Dean Huijsen",78],["Raul Asencio",74],["Alvaro Carreras",76],["Fran Garcia",78],["Jude Bellingham",90],["Eduardo Camavinga",85],["Federico Valverde",89],["Aurelien Tchouameni",86],["Arda Guler",81],["Dani Ceballos",79],["Brahim Diaz",80],["Vinicius Junior",93],["Kylian Mbappe",91],["Rodrygo",86],["Franco Mastantuono",76],["Fran Gonzalez",65],["Jesus Fortea",66]
+]},
+{n:"FC Barcelona",c:"BAR",c1:"#A50044",c2:"#004D98",co:"Hansi Flick",l:["Johan Cruyff",96],p:[
+["Wojciech Szczesny",82],["Joan Garcia",76],["Joao Cancelo",84],["Alejandro Balde",81],["Ronald Araujo",86],["Pau Cubarsi",82],["Andreas Christensen",80],["Jules Kounde",86],["Eric Garcia",78],["Gerard Martin",72],["Gavi",84],["Pedri",88],["Fermin Lopez",80],["Marc Casado",80],["Dani Olmo",86],["Frenkie de Jong",84],["Marc Bernal",74],["Ferran Torres",80],["Robert Lewandowski",88],["Lamine Yamal",86],["Raphinha",86],["Marcus Rashford",82],["Roony Bardghji",74],["Toni Fernandez",66],["Diego Kochen",62]
+]},
+{n:"Atletico de Madrid",c:"ATM",c1:"#CE3524",c2:"#27447E",co:"Diego Simeone",l:["Fernando Torres",91],p:[
+["Jan Oblak",89],["Juan Musso",80],["Jose Maria Gimenez",83],["Robin Le Normand",82],["Clement Lenglet",78],["David Hancko",81],["Nahuel Molina",80],["Marc Pubill",75],["Matteo Ruggeri",78],["Koke",82],["Pablo Barrios",80],["Alex Baena",83],["Marcos Llorente",82],["Thiago Almada",79],["Johnny Cardoso",78],["Rodrigo Mendoza",72],["Obed Vargas",70],["Antoine Griezmann",87],["Julian Alvarez",87],["Alexander Sorloth",82],["Giuliano Simeone",76],["Ademola Lookman",84],["Nicolas Gonzalez",80],["Javier Serrano",72],["Ilias Kostis",66]
+]},
+{n:"Athletic Club",c:"ATH",c1:"#EE2523",c2:"#FFFFFF",co:"Ernesto Valverde",l:["Telmo Zarra",94],p:[
+["Unai Simon",84],["Alex Padilla",72],["Dani Vivian",80],["Aitor Paredes",78],["Yeray Alvarez",77],["Aymeric Laporte",83],["Andoni Gorosabel",76],["Yuri Berchiche",76],["Inigo Lekue",74],["Jesus Areso",74],["Mikel Jauregizar",79],["Oihan Sancet",81],["Mikel Vesga",76],["Inigo Ruiz de Galarreta",77],["Unai Gomez",74],["Robert Navarro",73],["Alex Berenguer",79],["Nico Williams",86],["Inaki Williams",81],["Gorka Guruzeta",80],["Adama Boiro",68],["Nico Serrano",72],["Benat Prados",66],["Maroan Sannadi",64],["Mikel Santos",62]
+]},
+{n:"Real Betis",c:"BET",c1:"#00954C",c2:"#FFFFFF",co:"Manuel Pellegrini",l:["Joaquin Sanchez",88],p:[
+["Alvaro Valles",80],["Pau Lopez",78],["Adrian San Miguel",74],["Hector Bellerin",76],["Diego Llorente",79],["Natan",77],["Marc Bartra",78],["Ricardo Rodriguez",76],["Junior Firpo",77],["Valentin Gomez",73],["Pablo Fornals",81],["Giovani Lo Celso",83],["Sofyan Amrabat",80],["Marc Roca",79],["Isco",80],["Sergi Altimira",76],["Alvaro Fidalgo",75],["Rodrigo Riquelme",81],["Antony",79],["Chimy Avila",78],["Abde Ezzalzouli",77],["Cedric Bakambu",76],["Cucho Hernandez",80],["Aitor Ruibal",76],["Nelson Deossa",74]
+]},
+{n:"Real Sociedad",c:"RSO",c1:"#2155A4",c2:"#FFFFFF",co:"Imanol Alguacil",l:["Xabi Prieto",86],p:[
+["Alex Remiro",83],["Unai Marrero",62],["Aritz Elustondo",76],["Igor Zubeldia",78],["Jon Pacheco",72],["Hamari Traore",73],["Aihen Munoz",76],["Alex Sola",74],["Alvaro Odriozola",74],["Martin Zubimendi",86],["Brais Mendez",80],["Luka Sucic",79],["Ander Barrenetxea",78],["Takefusa Kubo",84],["Mikel Oyarzabal",84],["Orri Oskarsson",76],["Sheraldo Becker",74],["Ander Guevara",74],["Benat Turrientes",73],["Jon Ander Olasagasti",70],["Pablo Marin",66],["Sergio Gomez",74],["Nayef Aguerd",77],["Urko Gonzalez de Zarate",60],["Roberto Lopez",63]
+]},
+{n:"Villarreal CF",c:"VIL",c1:"#FFE114",c2:"#005B2A",co:"Marcelino Garcia Toral",l:["Marcos Senna",88],p:[
+["Diego Conde",74],["Luiz Junior",64],["Logan Costa",76],["Eric Bailly",73],["Juan Foyth",80],["Alfonso Pedraza",78],["Sergi Cardona",74],["Kiko Femenia",73],["Jorge Cuenca",74],["Willy Kambwala",68],["Dani Parejo",81],["Santi Comesana",74],["Ramon Terrats",70],["Denis Suarez",73],["Manu Trigueros",72],["Yeremy Pino",80],["Ilias Akhomach",75],["Thierno Barry",74],["Ayoze Perez",79],["Nicolas Pepe",73],["Gerard Moreno",80],["Arnaut Danjuma",76],["Pape Gueye",73],["Manu Morlanes",73],["Jose Luis Morales",71]
+]},
+{n:"Girona FC",c:"GIR",c1:"#CD2534",c2:"#FFFFFF",co:"Michel Sanchez",l:["Cristhian Stuani",85],p:[
+["Paulo Gazzaniga",78],["Juan Carlos Martin",64],["David Lopez",74],["Daley Blind",77],["Arnau Martinez",76],["Miguel Gutierrez",79],["Alejandro Frances",75],["Juanpe",73],["Ladislav Krejci",76],["Donny van de Beek",74],["Ivan Martin",77],["Yangel Herrera",76],["Oriol Romeu",75],["Bryan Gil",75],["Viktor Tsygankov",79],["Abel Ruiz",74],["Bojan Miovski",75],["Yaser Asprilla",76],["Portu",73],["Jhon Solis",68],["Aimar Oroz",72],["Toni Villa",70],["Cristhian Stuani",74],["Gabriel Misehouy",64],["Pau Victor",68]
+]},
+{n:"Sevilla FC",c:"SEV",c1:"#D4021D",c2:"#FFFFFF",co:"Garcia Pimienta",l:["Antonio Puerta",87],p:[
+["Orjan Nyland",76],["Alberto Flores",60],["Loic Bade",79],["Tanguy Nianzou",75],["Marcao",76],["Kike Salas",74],["Adria Pedrosa",75],["Gonzalo Montiel",76],["Jose Angel Carmona",72],["Nemanja Gudelj",74],["Sambi Lokonga",74],["Lucien Agoume",74],["Djibril Sow",75],["Joan Jordan",76],["Suso",76],["Dodi Lukebakio",78],["Chidera Ejuke",73],["Isaac Romero",76],["Kelechi Iheanacho",74],["Juanlu Sanchez",73],["Valentin Barco",68],["Stanis Idumbo",64],["Peque",66],["Saul Niguez",73],["Jesus Joaquin Fernandez",62]
+]},
+{n:"RC Celta de Vigo",c:"CEL",c1:"#8AC3EE",c2:"#ED1C24",co:"Claudio Giraldez",l:["Aleksandr Mostovoi",89],p:[
+["Vicente Guaita",76],["Ivan Villar",65],["Carl Starfelt",76],["Joseph Aidoo",75],["Unai Nunez",76],["Oscar Mingueza",78],["Marcos Alonso",74],["Hugo Alvarez",68],["Carlos Dominguez",72],["Fran Beltran",77],["Damian Rodriguez",68],["Luca de la Torre",72],["Hugo Sotelo",66],["Williot Swedberg",72],["Franco Cervi",76],["Iago Aspas",82],["Borja Iglesias",76],["Anastasios Douvikas",77],["Jonathan Bamba",75],["Alfon Gonzalez",66],["Kevin Vazquez",72],["Pablo Duran",62],["Jailson",72],["Tadeo Allende",70],["Ilaix Moriba",73]
+]},
+{n:"CA Osasuna",c:"OSA",c1:"#D91A2A",c2:"#00205B",co:"Vicente Moreno",l:["Patxi Punal",85],p:[
+["Sergio Herrera",78],["Aitor Fernandez",75],["Juan Cruz",76],["David Garcia",79],["Alejandro Catena",77],["Unai Garcia",74],["Jesus Areso",76],["Enzo Boyomo",72],["Ruben Pena",75],["Lucas Torro",77],["Jon Moncayola",76],["Aimar Oroz",80],["Pablo Ibanez",74],["Ante Budimir",81],["Kike Garcia",76],["Ruben Garcia",75],["Moi Gomez",76],["Abel Bretones",73],["Iker Munoz",68],["Jorge Herrando",72],["Javi Martinez",71],["Kike Barja",72],["Nacho Vidal",73],["Aitor Bunuel",70],["Jon Magunacelaya",68]
+]},
+{n:"RCD Mallorca",c:"MLL",c1:"#E20613",c2:"#000000",co:"Jagoba Arrasate",l:["Samuel Eto'o",93],p:[
+["Predrag Rajkovic",79],["Leo Roman",72],["Antonio Raillo",77],["Martin Valjent",78],["Johan Mojica",77],["Pablo Maffeo",78],["Siebe Van der Heyden",74],["Giovanni Gonzalez",74],["Antonio Sanchez",73],["Omar Mascarell",76],["Manu Morlanes",76],["Samu Costa",77],["Sergi Darder",79],["Dani Rodriguez",76],["Cyle Larin",77],["Vedat Muriqi",80],["Abdon Prats",74],["Jaume Costa",73],["Toni Lato",74],["Dominik Greif",70],["Copete",71],["Samu Lapsraoui",62],["Costi Lago",68],["Angel Rodriguez",72],["Nastasic",71]
+]},
+{n:"Rayo Vallecano",c:"RAY",c1:"#E53027",c2:"#FFFFFF",co:"Inigo Perez",l:["Wilfred Agbonavbare",85],p:[
+["Augusto Batalla",77],["Dani Cardenas",74],["Florian Lejeune",78],["Abdul Mumin",76],["Andrei Ratiu",79],["Alfonso Espino",76],["Ivan Balliu",74],["Raul Guti",73],["Pathe Ciss",76],["Oscar Valentin",77],["Unai Lopez",76],["Isi Palazon",79],["Alvaro Garcia",78],["Jorge de Frutos",78],["Raul de Tomas",79],["Sergio Camello",77],["Randy Nteka",74],["Pedro Diaz",72],["Oscar Trejo",75],["Adrian Embarba",73],["Diego Lopez",70],["Pep Chavarria",71],["James Rodriguez",76],["Roberto Lopez",62],["Salvi Sanchez",71]
+]},
+{n:"Getafe CF",c:"GET",c1:"#004FA3",c2:"#E2001A",co:"Jose Bordalas",l:["Pedro Leon",84],p:[
+["David Soria",79],["Ruben Yanez",72],["Djene Dakonam",78],["Domingos Duarte",76],["Omar Alderete",77],["Juan Iglesias",74],["Diego Rico",75],["Juan Berrocal",72],["Luis Milla",78],["Mauro Arambarri",78],["Nemanja Maksimovic",76],["Yellu Santiago",68],["Carles Alena",76],["Christantus Uche",74],["Carles Perez",76],["Borja Mayoral",78],["Alvaro Rodriguez",74],["Peter Federico",72],["Coba Gomes",70],["Portu",75],["Luis Javier Suarez",74],["Gaston Alvarez",71],["Allan Nyom",73],["Jakub Jankto",73],["Chrisantus Macauley",64]
+]},
+{n:"Deportivo Alaves",c:"ALA",c1:"#003DA5",c2:"#FFFFFF",co:"Luis Garcia Plaza",l:["Javi Moreno",86],p:[
+["Antonio Sivera",77],["Ander Guevara",75],["Abdel Abqar",74],["Moussa Diarra",75],["Nahuel Tenaglia",74],["Ruben Duarte",74],["Adrian Marin",73],["Santiago Mourino",72],["Carlos Vicente",76],["Jon Guridi",75],["Antonio Blanco",76],["Tomas Conechny",74],["Joan Jordan",76],["Carlos Martin",71],["Luis Rioja",76],["Kike Garcia",78],["Stoichkov",73],["Toni Martinez",75],["Jon Aramburu",72],["Ianis Hagi",74],["Abde Rebbach",72],["Alex Balboa",68],["Luka Romero",70],["Abelardo Ribas",62],["Jesus Owono",68]
+]},
+{n:"RCD Espanyol",c:"ESP",c1:"#007FC8",c2:"#FFFFFF",co:"Manolo Gonzalez",l:["Raul Tamudo",87],p:[
+["Joan Garcia",78],["Fernando Calero",75],["Leandro Cabrera",74],["Omar El Hilali",73],["Carlos Romero",72],["Sergi Gomez",74],["Brian Olivan",73],["Alvaro Tejero",71],["Jose Gragera",74],["Edu Exposito",76],["Alex Kral",77],["Pol Lozano",72],["Salvi Sanchez",70],["Javi Puado",79],["Irvin Cardona",76],["Walid Cheddira",75],["Alejo Veliz",73],["Pere Milla",72],["Luca Koleosho",74],["Jofre Carreras",71],["Alvaro Aguado",73],["Ruben Sanchez",68],["Angel Fortuno",62],["Joan Rojas",60],["Aaron Caricol",66]
+]},
+{n:"Real Valladolid",c:"VLL",c1:"#6B2F7B",c2:"#FFFFFF",co:"Diego Cocca",l:["Eusebio Sacristan",85],p:[
+["Karl Hein",74],["Juma Bah",73],["Luis Perez",72],["David Torres",71],["Lucas Rosa",70],["Cenk Ozkacar",72],["Stanislav Kritciuk",68],["Selim Amallah",75],["Kike Perez",76],["Juanmi Latasa",74],["Raul Moro",75],["Ivan Sanchez",73],["Kenedy",74],["Mamadou Sylla",72],["Marcos Andre",74],["Darwin Machis",73],["Amath Ndiaye",73],["Monchu",72],["Victor Meseguer",71],["Anuar Mohamed",70],["Cadu",68],["Cristo Gonzalez",69],["Ekaitz Jimenez",65],["Joaquin Fernandez",71],["Javier Sanchez",72]
+]},
+{n:"UD Las Palmas",c:"LPA",c1:"#FFE400",c2:"#0054A6",co:"Diego Martinez",l:["Juan Carlos Valeron",90],p:[
+["Jasper Cillessen",78],["Dinko Horkas",72],["Alex Suarez",73],["Scott McKenna",74],["Mika Marmol",76],["Alex Munoz",74],["Viti Rozada",71],["Marvin Park",70],["Daley Sinkgraven",73],["Javi Munoz",76],["Kirian Rodriguez",78],["Alberto Moleiro",80],["Sandro Ramirez",75],["Oli McBurnie",74],["Marc Cardona",72],["Fabio Silva",74],["Jaime Mata",73],["Enzo Loiodice",72],["Jose Campana",77],["Adnan Januzaj",73],["Benito Ramirez",64],["Dario Essugo",71],["Ivan Gil",67],["Oscar Clemente",66],["Manu Fuster",70]
+]},
+{n:"CD Leganes",c:"LEG",c1:"#1E3A6D",c2:"#FFFFFF",co:"Borja Jimenez",l:["Ruben Perez",82],p:[
+["Marko Dmitrovic",76],["Juan Soriano",70],["Jorge Saenz",73],["Enric Franquesa",74],["Sergio Gonzalez",72],["Jorge Cuenca",73],["Matija Nastasic",74],["Oscar Rodriguez",76],["Dani Raba",73],["Seydouba Cisse",72],["Yvan Neyou",73],["Miguel de la Fuente",74],["Juan Cruz",75],["Munir El Haddadi",76],["Sebastien Haller",78],["Renato Tapia",74],["Dani Ojeda",72],["Valentin Rosier",73],["Chicco Lamba",65],["Diego Garcia",70],["Roberto Lopez",71],["Darko Brasanac",73],["Naim Garcia",62],["Gaku Shibasaki",72],["Txomin Banales",60]
+]},
+{n:"Valencia CF",c:"VAL",c1:"#FFFFFF",c2:"#FF6E00",co:"Carlos Corberan",l:["David Villa",94],p:[
+["Giorgi Mamardashvili",84],["Stole Dimitrievski",75],["Cristhian Mosquera",76],["Jose Luis Gaya",81],["Dimitri Foulquier",74],["Cesar Tarrega",73],["Mouctar Diakhaby",74],["Thierry Correia",73],["Yarek Gasiorowski",72],["Hugo Guillamon",78],["Pepelu",78],["Javi Guerra",77],["Andre Almeida",75],["Diego Lopez",76],["Hugo Duro",77],["Rafa Mir",75],["Dani Gomez",73],["Fran Perez",71],["Sergi Canos",73],["Luis Rioja",74],["Samu Castillejo",72],["Joni Montiel",65],["Martin Tejon",60],["Peter Federico",68],["Jesus Vazquez",67]
+]}
+];
+
+const EVENT_TYPES=[
+{t:"swap",n:"Cambio de campo",d:"Intercambia manos con el rival",i:"\u{1F504}"},
+{t:"steal",n:"Robo de balon",d:"Roba 1 carta aleatoria del rival",i:"\u{1F590}"},
+{t:"yellow",n:"Tarjeta amarilla",d:"-5 puntos al rival en esta baza",i:"\u{1F7E8}"},
+{t:"red",n:"Tarjeta roja",d:"Puntuacion rival dividida entre 2",i:"\u{1F7E5}"},
+{t:"talk",n:"Charla del descanso",d:"+1 por cada jugador que juegues",i:"\u{1F4AC}"}
+];
+
+// ==================== GAME STATE ====================
+let G={
+  phase:'menu',difficulty:'normal',
+  deck:[],playerHand:[],cpuHand:[],discard:[],
+  playerScore:0,cpuScore:0,
+  playerBazas:0,cpuBazas:0,
+  playerStreak:0,cpuStreak:0,
+  bazaNum:0,
+  playerFirst:true,
+  playerPlay:[],cpuPlay:[],
+  selected:new Set(),
+  discardSelected:new Set(),
+  discardNeeded:0,
+  animating:false
+};
+
+// ==================== UTILS ====================
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function vibrate(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
+function wait(ms){return new Promise(r=>setTimeout(r,ms))}
+function $(s){return document.querySelector(s)}
+function $$(s){return document.querySelectorAll(s)}
+
+// ==================== DECK ====================
+function generateDeck(){
+  const cards=[];let id=0;
+  TEAMS.forEach((team,ti)=>{
+    team.p.forEach(([name,rating])=>{
+      cards.push({id:id++,type:'player',team:ti,name,rating});
+    });
+    cards.push({id:id++,type:'shield',team:ti,name:'Escudo '+team.n,rating:0});
+    cards.push({id:id++,type:'coach',team:ti,name:team.co,rating:0});
+    cards.push({id:id++,type:'legend',team:ti,name:team.l[0],rating:team.l[1]});
+  });
+  EVENT_TYPES.forEach(evt=>{
+    for(let i=0;i<4;i++){
+      cards.push({id:id++,type:'event_'+evt.t,team:null,name:evt.n,rating:null,desc:evt.d,icon:evt.i});
+    }
+  });
+  return cards;
+}
+
+// ==================== CARD RENDERING ====================
+function cardHTML(card,mini=false,faceDown=false){
+  if(faceDown)return`<div class="card${mini?' card-mini':''}"><div class="card-inner"><div class="card-back">\u26BD</div></div></div>`;
+  const t=TEAMS[card.team];
+  const isEvent=card.type.startsWith('event_');
+  const evtClass=isEvent?'type-event type-'+card.type:'type-'+card.type;
+  const headerBg=isEvent?'':t?`background:linear-gradient(135deg,${t.c1},${t.c2})`:'';
+  const headerStyle=headerBg?` style="${headerBg}"`:'';
+  const code=t?t.c:'EVT';
+  const icon=card.type==='player'?'\u26BD':card.type==='shield'?'\u{1F6E1}':card.type==='coach'?'\u{1F4CB}':card.type==='legend'?'\u2B50':card.icon||'\u{1F0CF}';
+  const ratingDisplay=card.rating!=null&&card.rating>0?card.rating:'';
+  const teamName=t?t.n:(card.desc||'');
+  let badge='';
+  if(card.type==='shield')badge='<span class="card-type-badge">x2</span>';
+  else if(card.type==='coach')badge='<span class="card-type-badge">Mister</span>';
+  else if(card.type==='legend')badge='<span class="card-type-badge">Leyenda</span>';
+  return`<div class="card ${evtClass}${mini?' card-mini':''}" data-id="${card.id}">
+<div class="card-inner">
+<div class="card-front">
+<div class="card-header"${headerStyle}>
+<span class="card-team-code">${code}</span>
+<span class="card-rating">${ratingDisplay}</span>
+</div>
+<div class="card-body">
+<div class="card-icon">${icon}</div>
+<div class="card-name">${card.name}</div>
+<div class="card-team-name">${teamName}</div>
+</div>
+${badge}
+</div>
+</div>
+</div>`;
+}
+
+// ==================== SCREENS ====================
+function showScreen(name){
+  $$('.screen').forEach(s=>{s.classList.remove('active');s.classList.add('hidden')});
+  const el=$('#'+name);
+  if(el){el.classList.remove('hidden');el.classList.add('active')}
+  if(name==='menu')updateMenuState();
+  if(name==='stats')updateStats();
+}
+
+function updateMenuState(){
+  const saved=localStorage.getItem('sc_game');
+  const btn=$('#btn-continue');
+  if(saved)btn.classList.remove('btn-disabled');
+  else btn.classList.add('btn-disabled');
+}
+
+// ==================== STATS ====================
+function getStats(){
+  try{return JSON.parse(localStorage.getItem('sc_stats'))||{wins:0,losses:0,bazas:0,bestStreak:0,played:0,maxPts:0}}
+  catch(e){return{wins:0,losses:0,bazas:0,bestStreak:0,played:0,maxPts:0}}
+}
+function saveStats(s){localStorage.setItem('sc_stats',JSON.stringify(s))}
+function updateStats(){
+  const s=getStats();
+  $('#stat-wins').textContent=s.wins;
+  $('#stat-losses').textContent=s.losses;
+  $('#stat-bazas').textContent=s.bazas;
+  $('#stat-best').textContent=s.bestStreak;
+  $('#stat-played').textContent=s.played;
+  $('#stat-pts').textContent=s.maxPts;
+}
+function resetStats(){if(confirm('Borrar todas las estadisticas?')){saveStats({wins:0,losses:0,bazas:0,bestStreak:0,played:0,maxPts:0});updateStats()}}
+
+// ==================== GAME START ====================
+async function startGame(diff){
+  G={
+    phase:'playing',difficulty:diff,
+    deck:shuffle(generateDeck()),
+    playerHand:[],cpuHand:[],discard:[],
+    playerScore:0,cpuScore:0,
+    playerBazas:0,cpuBazas:0,
+    playerStreak:0,cpuStreak:0,
+    bazaNum:0,playerFirst:true,
+    playerPlay:[],cpuPlay:[],
+    selected:new Set(),discardSelected:new Set(),discardNeeded:0,
+    animating:false
+  };
+  // Deal 7 each
+  for(let i=0;i<7;i++){
+    G.playerHand.push(G.deck.pop());
+    G.cpuHand.push(G.deck.pop());
+  }
+  showScreen('game');
+  renderGame();
+  await wait(500);
+  await coinToss();
+  nextBaza();
+}
+
+async function continueGame(){
+  try{
+    const saved=JSON.parse(localStorage.getItem('sc_game'));
+    if(!saved)return;
+    G=saved;
+    G.selected=new Set();G.discardSelected=new Set();G.animating=false;
+    showScreen('game');
+    renderGame();
+  }catch(e){console.error(e)}
+}
+
+function saveGame(){
+  const save={...G,selected:undefined,discardSelected:undefined};
+  localStorage.setItem('sc_game',JSON.stringify(save));
+}
+
+// ==================== COIN TOSS ====================
+async function coinToss(){
+  const overlay=$('#coin-overlay');
+  const coin=$('#coin-face');
+  const text=$('#coin-text');
+  const sub=$('#coin-sub');
+  G.playerFirst=Math.random()>0.5;
+  overlay.classList.add('show');
+  coin.textContent='?';
+  text.textContent='Lanzando moneda...';
+  sub.textContent='';
+  coin.classList.add('spinning');
+  await wait(2200);
+  coin.classList.remove('spinning');
+  coin.textContent=G.playerFirst?'\u{1F44A}':'\u{1F916}';
+  text.textContent=G.playerFirst?'Tu empiezas!':'Empieza la CPU';
+  sub.textContent='Toca para continuar';
+  await new Promise(r=>{overlay.onclick=()=>{overlay.classList.remove('show');overlay.onclick=null;r()}});
+}
+
+// ==================== GAME FLOW ====================
+function nextBaza(){
+  G.bazaNum++;
+  G.playerPlay=[];G.cpuPlay=[];
+  G.selected=new Set();
+  clearPlayZone();
+  renderGame();
+  if(!G.playerFirst){
+    G.animating=true;
+    setTimeout(()=>{cpuTurn();G.animating=false;renderGame()},800);
+  }
+}
+
+function clearPlayZone(){
+  $('#pzc-player').innerHTML='';
+  $('#pzc-cpu').innerHTML='';
+  const r=$('#play-result');r.classList.remove('show','win','lose','draw');r.textContent='';
+}
+
+// ==================== PLAYER ACTIONS ====================
+function toggleSelect(cardId){
+  if(G.animating||G.phase!=='playing')return;
+  if(G.playerPlay.length>0)return; // Already played this baza
+  if(G.selected.has(cardId))G.selected.delete(cardId);
+  else G.selected.add(cardId);
+  updatePlayButton();
+  renderHand();
+}
+
+function updatePlayButton(){
+  const btn=$('#btn-play');
+  if(G.selected.size>0&&validateSelection()){
+    btn.classList.remove('btn-disabled');
+  }else{
+    btn.classList.add('btn-disabled');
+  }
+}
+
+function validateSelection(){
+  const cards=[...G.selected].map(id=>G.playerHand.find(c=>c.id===id)).filter(Boolean);
+  if(cards.length===0)return false;
+  const nonEvent=cards.filter(c=>!c.type.startsWith('event_'));
+  const events=cards.filter(c=>c.type.startsWith('event_'));
+  if(nonEvent.length===0&&events.length>0)return true; // Event-only play
+  if(nonEvent.length===0)return false;
+  // Check all non-event cards are from the same team
+  const team=nonEvent[0].team;
+  if(!nonEvent.every(c=>c.team===team))return false;
+  // Shield/coach only with player/legend
+  const players=nonEvent.filter(c=>c.type==='player'||c.type==='legend');
+  const shields=nonEvent.filter(c=>c.type==='shield');
+  const coaches=nonEvent.filter(c=>c.type==='coach');
+  if((shields.length>0||coaches.length>0)&&players.length===0)return false;
+  return true;
+}
+
+async function playSelected(){
+  if(G.animating||G.selected.size===0||!validateSelection())return;
+  G.animating=true;
+  vibrate(50);
+  const playCards=[...G.selected].map(id=>G.playerHand.find(c=>c.id===id)).filter(Boolean);
+  G.playerPlay=playCards;
+  G.playerHand=G.playerHand.filter(c=>!G.selected.has(c.id));
+  G.selected=new Set();
+  // Handle pre-play events (swap, steal)
+  await handlePreEvents(playCards,'player');
+  renderPlayerPlay();
+  renderHand();
+  if(G.cpuPlay.length===0){
+    // CPU hasn't played yet
+    await wait(600);
+    cpuTurn();
+    renderCpuPlay();
+    await wait(400);
+  }
+  await resolveBaza();
+  G.animating=false;
+}
+
+// ==================== CPU AI ====================
+function cpuTurn(){
+  const hand=G.cpuHand;
+  if(hand.length===0)return;
+  const diff=G.difficulty;
+  let play=[];
+  // Group by team
+  const groups={};
+  hand.forEach(c=>{
+    if(c.team!=null){
+      if(!groups[c.team])groups[c.team]=[];
+      groups[c.team].push(c);
+    }
+  });
+  const events=hand.filter(c=>c.type.startsWith('event_'));
+
+  if(diff==='easy'){
+    // Play single random non-shield/coach card
+    const playable=hand.filter(c=>c.type==='player'||c.type==='legend');
+    if(playable.length>0){
+      play=[playable[Math.floor(Math.random()*playable.length)]];
+    }else{
+      play=[hand[0]];
+    }
+  }else if(diff==='normal'){
+    // Try combo of 2+ same-team players
+    let bestCombo=null,bestVal=0;
+    for(const[ti,cards] of Object.entries(groups)){
+      const pl=cards.filter(c=>c.type==='player'||c.type==='legend');
+      if(pl.length>=2){
+        const val=pl.reduce((s,c)=>s+c.rating,0);
+        const shield=cards.find(c=>c.type==='shield');
+        const total=shield?val*2:val;
+        if(total>bestVal){bestVal=total;bestCombo=[...pl];if(shield)bestCombo.push(shield)}
+      }
+    }
+    if(bestCombo){play=bestCombo}
+    else{
+      const ranked=hand.filter(c=>c.rating>0).sort((a,b)=>b.rating-a.rating);
+      play=ranked.length>0?[ranked[0]]:[hand[0]];
+    }
+    // Maybe add a yellow/red event
+    if(Math.random()>0.5){
+      const ev=events.find(c=>c.type==='event_yellow'||c.type==='event_red');
+      if(ev)play.push(ev);
+    }
+  }else{
+    // Hard: maximize score, consider opponent
+    let bestPlay=null,bestScore=0;
+    for(const[ti,cards] of Object.entries(groups)){
+      const pl=cards.filter(c=>c.type==='player'||c.type==='legend');
+      const shield=cards.find(c=>c.type==='shield');
+      const coach=cards.find(c=>c.type==='coach');
+      for(let sz=Math.min(pl.length,4);sz>=1;sz--){
+        const sorted=pl.sort((a,b)=>b.rating-a.rating);
+        const combo=sorted.slice(0,sz);
+        let val=combo.reduce((s,c)=>s+c.rating,0);
+        const thisPlay=[...combo];
+        if(shield&&combo.length>=2){val*=2;thisPlay.push(shield)}
+        if(coach){thisPlay.push(coach)}
+        if(val>bestScore){bestScore=val;bestPlay=thisPlay}
+      }
+    }
+    // Consider single high card
+    const singles=hand.filter(c=>c.rating>0).sort((a,b)=>b.rating-a.rating);
+    if(singles.length>0&&singles[0].rating>bestScore){
+      bestScore=singles[0].rating;bestPlay=[singles[0]];
+    }
+    play=bestPlay||[hand[0]];
+    // Add scoring events
+    const yellow=events.find(c=>c.type==='event_yellow');
+    const red=events.find(c=>c.type==='event_red');
+    const talk=events.find(c=>c.type==='event_talk');
+    if(red&&!play.includes(red))play.push(red);
+    else if(yellow&&!play.includes(yellow))play.push(yellow);
+    if(talk&&play.filter(c=>c.type==='player'||c.type==='legend').length>=2&&!play.includes(talk))play.push(talk);
+  }
+  G.cpuPlay=play;
+  G.cpuHand=G.cpuHand.filter(c=>!play.some(p=>p.id===c.id));
+}
+
+// ==================== EVENTS ====================
+async function handlePreEvents(cards,who){
+  const swapEvt=cards.find(c=>c.type==='event_swap');
+  const stealEvt=cards.find(c=>c.type==='event_steal');
+  if(swapEvt){
+    await showEventMsg('\u{1F504} Cambio de campo!','Se intercambian las manos');
+    const temp=G.playerHand;G.playerHand=G.cpuHand;G.cpuHand=temp;
+    renderGame();
+  }
+  if(stealEvt){
+    const target=who==='player'?G.cpuHand:G.playerHand;
+    const receiver=who==='player'?G.playerHand:G.cpuHand;
+    if(target.length>0){
+      const idx=Math.floor(Math.random()*target.length);
+      const stolen=target.splice(idx,1)[0];
+      receiver.push(stolen);
+      await showEventMsg('\u{1F590} Robo de balon!',`Se roba: ${stolen.name}`);
+      renderGame();
+    }
+  }
+}
+
+async function showEventMsg(text,sub){
+  const o=$('#event-overlay');
+  const t=$('#event-text');
+  const s=$('#event-sub');
+  t.textContent=text;s.textContent=sub;
+  o.classList.add('show');
+  vibrate([80,40,80]);
+  await wait(1500);
+  o.classList.remove('show');
+  await wait(300);
+}
+
+// ==================== BAZA RESOLUTION ====================
+async function resolveBaza(){
+  let pScore=calcScore(G.playerPlay);
+  let cScore=calcScore(G.cpuPlay);
+  // Apply coach power (eliminate best rival card)
+  const pCoach=G.playerPlay.find(c=>c.type==='coach');
+  const cCoach=G.cpuPlay.find(c=>c.type==='coach');
+  if(pCoach){
+    const rivalPlayers=G.cpuPlay.filter(c=>c.type==='player'||c.type==='legend').sort((a,b)=>b.rating-a.rating);
+    if(rivalPlayers.length>0){
+      cScore-=rivalPlayers[0].rating;
+      await showEventMsg('\u{1F4CB} Entrenador!',`Elimina a ${rivalPlayers[0].name} (${rivalPlayers[0].rating}pts)`);
+    }
+  }
+  if(cCoach){
+    const rivalPlayers=G.playerPlay.filter(c=>c.type==='player'||c.type==='legend').sort((a,b)=>b.rating-a.rating);
+    if(rivalPlayers.length>0){
+      pScore-=rivalPlayers[0].rating;
+      await showEventMsg('\u{1F4CB} Entrenador rival!',`Elimina a ${rivalPlayers[0].name} (${rivalPlayers[0].rating}pts)`);
+    }
+  }
+  // Apply events that affect rival
+  const pEvents=G.playerPlay.filter(c=>c.type.startsWith('event_'));
+  const cEvents=G.cpuPlay.filter(c=>c.type.startsWith('event_'));
+  pEvents.forEach(e=>{
+    if(e.type==='event_yellow')cScore=Math.max(0,cScore-5);
+    if(e.type==='event_red')cScore=Math.floor(cScore/2);
+    if(e.type==='event_talk')pScore+=G.playerPlay.filter(c=>c.type==='player'||c.type==='legend').length;
+  });
+  cEvents.forEach(e=>{
+    if(e.type==='event_yellow')pScore=Math.max(0,pScore-5);
+    if(e.type==='event_red')pScore=Math.floor(pScore/2);
+    if(e.type==='event_talk')cScore+=G.cpuPlay.filter(c=>c.type==='player'||c.type==='legend').length;
+  });
+  pScore=Math.max(0,pScore);cScore=Math.max(0,cScore);
+  // Determine winner
+  const result=pScore>cScore?'win':pScore<cScore?'lose':'draw';
+  const r=$('#play-result');
+  if(result==='win'){
+    pScore+=1; // Bonus
+    G.playerBazas++;G.playerStreak++;G.cpuStreak=0;
+    r.textContent=`GANAS! ${pScore}-${cScore}`;r.className='play-result win';
+    vibrate([100,50,100]);
+  }else if(result==='lose'){
+    cScore+=1;
+    G.cpuBazas++;G.cpuStreak++;G.playerStreak=0;
+    r.textContent=`PIERDES ${pScore}-${cScore}`;r.className='play-result lose';
+    vibrate(200);
+  }else{
+    r.textContent=`EMPATE ${pScore}-${cScore}`;r.className='play-result draw';
+  }
+  r.classList.add('show');
+  G.playerScore+=pScore;G.cpuScore+=cScore;
+  // Discard played cards
+  G.discard.push(...G.playerPlay,...G.cpuPlay);
+  // Alternate who goes first
+  if(result==='win')G.playerFirst=true;
+  else if(result==='lose')G.playerFirst=false;
+  renderScoreboard();
+  await wait(2000);
+  r.classList.remove('show');
+  // Check win conditions
+  const winner=checkWin();
+  if(winner){
+    endGame(winner);return;
+  }
+  // Draw phase
+  await drawPhase();
+  saveGame();
+  nextBaza();
+}
+
+function calcScore(cards){
+  const players=cards.filter(c=>c.type==='player'||c.type==='legend');
+  const hasShield=cards.some(c=>c.type==='shield');
+  let score=players.reduce((s,c)=>s+(c.rating||0),0);
+  if(hasShield&&players.length>0)score*=2;
+  return score;
+}
+
+function checkWin(){
+  if(G.playerScore>=1000)return'player';
+  if(G.cpuScore>=1000)return'cpu';
+  if(G.playerBazas>=10)return'player';
+  if(G.cpuBazas>=10)return'cpu';
+  if(G.playerStreak>=7)return'player';
+  if(G.cpuStreak>=7)return'cpu';
+  // Check if both hands empty and deck empty
+  if(G.deck.length===0&&G.playerHand.length===0&&G.cpuHand.length===0)
+    return G.playerScore>G.cpuScore?'player':G.cpuScore>G.playerScore?'cpu':'draw';
+  return null;
+}
+
+// ==================== DRAW PHASE ====================
+async function drawPhase(){
+  while(G.playerHand.length<7&&G.deck.length>0)G.playerHand.push(G.deck.pop());
+  while(G.cpuHand.length<7&&G.deck.length>0)G.cpuHand.push(G.deck.pop());
+  renderGame();
+  // Check if player needs to discard
+  if(G.playerHand.length>7){
+    await playerDiscard(G.playerHand.length-7);
+  }
+  // CPU auto-discards lowest
+  while(G.cpuHand.length>7){
+    const worst=G.cpuHand.reduce((min,c,i)=>(!min||((c.rating||0)<(min.c.rating||0))?{c,i}:min),null);
+    if(worst)G.cpuHand.splice(worst.i,1);
+    else G.cpuHand.pop();
+  }
+}
+
+function playerDiscard(count){
+  return new Promise(resolve=>{
+    G.discardNeeded=count;G.discardSelected=new Set();
+    const overlay=$('#discard-overlay');
+    const hand=$('#discard-hand');
+    $('#discard-count').textContent=count;
+    hand.innerHTML=G.playerHand.map(c=>{
+      const html=cardHTML(c,false);
+      return html.replace('data-id=','onclick="toggleDiscard('+c.id+')" data-id=');
+    }).join('');
+    overlay.classList.add('show');
+    const checkBtn=()=>{
+      const btn=$('#btn-discard');
+      if(G.discardSelected.size===count)btn.classList.remove('btn-disabled');
+      else btn.classList.add('btn-disabled');
+    };
+    window._discardResolve=resolve;
+    window._discardCheck=checkBtn;
+    checkBtn();
+  });
+}
+
+function toggleDiscard(id){
+  if(G.discardSelected.has(id))G.discardSelected.delete(id);
+  else if(G.discardSelected.size<G.discardNeeded)G.discardSelected.add(id);
+  // Update visual
+  $$('#discard-hand .card').forEach(el=>{
+    const cid=parseInt(el.dataset.id);
+    if(G.discardSelected.has(cid))el.classList.add('selected');
+    else el.classList.remove('selected');
+  });
+  if(window._discardCheck)window._discardCheck();
+}
+
+function confirmDiscard(){
+  if(G.discardSelected.size!==G.discardNeeded)return;
+  G.playerHand=G.playerHand.filter(c=>!G.discardSelected.has(c.id));
+  G.discardSelected=new Set();
+  $('#discard-overlay').classList.remove('show');
+  renderGame();
+  if(window._discardResolve){window._discardResolve();window._discardResolve=null}
+}
+
+// ==================== END GAME ====================
+function endGame(winner){
+  G.phase='ended';
+  localStorage.removeItem('sc_game');
+  const stats=getStats();
+  stats.played++;
+  if(winner==='player'){stats.wins++;stats.bazas+=G.playerBazas;stats.bestStreak=Math.max(stats.bestStreak,G.playerStreak);stats.maxPts=Math.max(stats.maxPts,G.playerScore)}
+  else if(winner==='cpu'){stats.losses++;stats.bazas+=G.playerBazas}
+  saveStats(stats);
+  const title=$('#end-title');
+  if(winner==='player'){title.textContent='VICTORIA!';title.className='end-result victory';spawnConfetti()}
+  else if(winner==='cpu'){title.textContent='DERROTA';title.className='end-result defeat'}
+  else{title.textContent='EMPATE';title.className='end-result defeat'}
+  const statsDiv=$('#end-stats');
+  const reason=G.playerScore>=1000||G.cpuScore>=1000?'1000 puntos':G.playerBazas>=10||G.cpuBazas>=10?'10 bazas':G.playerStreak>=7||G.cpuStreak>=7?'7 bazas seguidas':'Fin del mazo';
+  statsDiv.innerHTML=`
+    <div class="end-stat"><span>Tu puntuacion</span><span>${G.playerScore}</span></div>
+    <div class="end-stat"><span>CPU puntuacion</span><span>${G.cpuScore}</span></div>
+    <div class="end-stat"><span>Bazas ganadas</span><span>${G.playerBazas}</span></div>
+    <div class="end-stat"><span>Bazas CPU</span><span>${G.cpuBazas}</span></div>
+    <div class="end-stat"><span>Mejor racha</span><span>${Math.max(G.playerStreak,stats.bestStreak)}</span></div>
+    <div class="end-stat"><span>Bazas totales</span><span>${G.bazaNum}</span></div>
+    <div class="end-stat"><span>Victoria por</span><span>${reason}</span></div>
+  `;
+  showScreen('endgame');
+  vibrate(winner==='player'?[200,100,200,100,200]:200);
+}
+
+function spawnConfetti(){
+  const colors=['#D4AF37','#E63946','#2ECC71','#3498DB','#9B59B6','#F39C12'];
+  for(let i=0;i<40;i++){
+    const p=document.createElement('div');
+    p.className='confetti-particle';
+    p.style.left=Math.random()*100+'vw';
+    p.style.background=colors[Math.floor(Math.random()*colors.length)];
+    p.style.animationDelay=Math.random()*2+'s';
+    p.style.animationDuration=(2+Math.random()*2)+'s';
+    document.body.appendChild(p);
+    setTimeout(()=>p.remove(),5000);
+  }
+}
+
+// ==================== RENDERING ====================
+function renderGame(){
+  renderRivalHand();
+  renderHand();
+  renderScoreboard();
+}
+
+function renderRivalHand(){
+  const el=$('#rival-hand');
+  el.innerHTML=G.cpuHand.map(()=>'<div class="rival-card-back">\u26BD</div>').join('');
+}
+
+function renderHand(){
+  const el=$('#player-hand');
+  el.innerHTML=G.playerHand.map(c=>{
+    const html=cardHTML(c);
+    const sel=G.selected.has(c.id)?' selected':'';
+    return html.replace('class="card ','class="card'+sel+' ').replace('data-id=','onclick="toggleSelect('+c.id+')" data-id=');
+  }).join('');
+  updatePlayButton();
+}
+
+function renderPlayerPlay(){
+  const el=$('#pzc-player');
+  el.innerHTML=G.playerPlay.map(c=>cardHTML(c,true)).join('');
+}
+
+function renderCpuPlay(){
+  const el=$('#pzc-cpu');
+  el.innerHTML=G.cpuPlay.map(c=>cardHTML(c,true)).join('');
+}
+
+function renderScoreboard(){
+  $('#sc-player').textContent=G.playerScore;
+  $('#sc-cpu').textContent=G.cpuScore;
+  $('#sc-bazas').textContent=`Baza ${G.bazaNum} \u00B7 ${G.playerBazas}-${G.cpuBazas}`;
+  const streak=G.playerStreak>1?`Racha: ${G.playerStreak}`:G.cpuStreak>1?`Racha CPU: ${G.cpuStreak}`:'';
+  $('#sc-streak').textContent=streak;
+  $('#sc-deck').textContent=`Mazo: ${G.deck.length}`;
+}
+
+// ==================== GAME MENU ====================
+function showGameMenu(){$('#game-menu-overlay').classList.add('show')}
+function hideGameMenu(){$('#game-menu-overlay').classList.remove('show')}
+function saveAndQuit(){saveGame();hideGameMenu();showScreen('menu')}
+
+// ==================== INIT ====================
+function init(){
+  updateMenuState();
+  // Register service worker
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('./sw.js').catch(e=>console.log('SW error:',e));
+  }
+}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
