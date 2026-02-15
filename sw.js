@@ -1,5 +1,5 @@
-const CACHE='soccer-cards-v1';
-const ASSETS=['./','./index.html'];
+const CACHE='soccer-cards-v2';
+const ASSETS=['./','./index.html','./styles.css','./data.js','./game.js'];
 
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
