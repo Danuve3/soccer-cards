@@ -58,7 +58,7 @@
     <div class="rules-back"><button class="btn btn-secondary" onclick="showScreen('menu')" style="width:120px;font-size:18px;padding:8px">Volver</button></div>
     <h2>Reglas del Juego</h2>
     <h3>Objetivo</h3>
-    <p>Gana alcanzando 1000 puntos, ganando 10 bazas o 7 bazas consecutivas.</p>
+    <p>Gana el partido! 2 tiempos de 10 bazas. Si hay empate: prorroga (3 bazas a x2) y penaltis.</p>
     <h3>Preparacion</h3>
     <p>Se reparten 6 cartas a cada jugador del mazo de 580 cartas.</p>
     <h3>Turno</h3>
@@ -102,6 +102,14 @@
     </ul>
     <h3>Personalidades CPU</h3>
     <p>La CPU tiene personalidad propia cada partida: Conservador, Agresivo, Tramposo o Tactico. Cada uno juega de forma distinta.</p>
+    <h3>Formato Partido</h3>
+    <ul>
+      <li><b>1er Tiempo</b>: 10 bazas</li>
+      <li><b>Descanso</b>: puedes cambiar formacion</li>
+      <li><b>2do Tiempo</b>: 10 bazas mas</li>
+      <li><b>Prorroga</b>: si hay empate, 3 bazas con apuesta minima x2</li>
+      <li><b>Penaltis</b>: si sigue empate, 5 rondas de 1 carta cada uno</li>
+    </ul>
     <h3>Mercado de Fichajes</h3>
     <p>Tras cada baza, en vez de robar a ciegas, eliges cartas de un mercado abierto.</p>
     <h3>Puntuacion</h3>
@@ -198,6 +206,37 @@
   <div class="hand-preview">
     <div class="hand-preview-label">Tu mano actual</div>
     <div class="hand-preview-cards" id="draft-current-hand"></div>
+  </div>
+</div>
+
+<div class="overlay" id="halftime-overlay">
+  <div class="ht-title">Descanso</div>
+  <div class="ht-score" id="ht-score">0 - 0</div>
+  <div class="ht-bazas" id="ht-bazas">Bazas: 0 - 0</div>
+  <div class="ht-formation" id="ht-formation"></div>
+  <div class="ht-label">Cambiar formacion?</div>
+  <div class="formation-grid ht-grid">
+    <div class="formation-card" data-formation="433">
+      <div class="formation-name">4-3-3</div>
+      <div class="formation-desc">+15% combos 3+</div>
+    </div>
+    <div class="formation-card" data-formation="442">
+      <div class="formation-name">4-4-2</div>
+      <div class="formation-desc">7 cartas</div>
+    </div>
+    <div class="formation-card" data-formation="541">
+      <div class="formation-name">5-4-1</div>
+      <div class="formation-desc">Eventos -50%</div>
+    </div>
+    <div class="formation-card" data-formation="352">
+      <div class="formation-name">3-5-2</div>
+      <div class="formation-desc">Ver rival</div>
+    </div>
+  </div>
+  <button class="btn btn-primary" id="btn-ht-keep" style="margin-top:8px;width:220px">Mantener formacion</button>
+  <div class="hand-preview" style="margin-top:10px">
+    <div class="hand-preview-label">Tu mano actual</div>
+    <div class="hand-preview-cards" id="ht-current-hand"></div>
   </div>
 </div>
 

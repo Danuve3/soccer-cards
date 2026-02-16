@@ -21,7 +21,10 @@ let G={
   playerBet:1,cpuBet:1,
   playerFormation:null,cpuFormation:null,
   epicMode:null, // {who:'player'|'cpu', remaining:3}
-  cpuPersonality:null
+  cpuPersonality:null,
+  // Match format
+  period:'first_half', // first_half, second_half, extra_time, penalties
+  penaltyRound:0,penaltyPlayer:0,penaltyCpu:0
 };
 
 // ==================== UTILS ====================
@@ -132,7 +135,8 @@ async function startGame(diff){
     animating:false,
     playerBet:1,cpuBet:1,
     playerFormation:null,cpuFormation:null,
-    epicMode:null,cpuPersonality:null
+    epicMode:null,cpuPersonality:null,
+    period:'first_half',penaltyRound:0,penaltyPlayer:0,penaltyCpu:0
   };
   // Pick CPU personality first (needed for formation choice)
   G.cpuPersonality=pickCpuPersonality(diff);
@@ -168,6 +172,8 @@ async function continueGame(){
     G.cpuFormation=G.cpuFormation||null;
     G.cpuPersonality=G.cpuPersonality||null;
     G.playerBet=G.playerBet||1;G.cpuBet=G.cpuBet||1;
+    G.period=G.period||'first_half';
+    G.penaltyRound=G.penaltyRound||0;G.penaltyPlayer=G.penaltyPlayer||0;G.penaltyCpu=G.penaltyCpu||0;
     showScreen('game');
     renderGame();
   }catch(e){console.error(e)}
@@ -214,8 +220,14 @@ async function nextBaza(){
     await showEventMsg('\u{1F441}\uFE0F Espionaje!',`Rival tiene: ${peekCard.name}${peekCard.rating?' ('+peekCard.rating+')':''}`);
   }
   // Bet phase
-  G.cpuBet=cpuBet();
-  await showBetOverlay();
+  if(G.period==='extra_time'){
+    // Extra time: forced minimum 2x
+    G.cpuBet=Math.max(2,cpuBet());
+    await showBetOverlay(2);
+  }else{
+    G.cpuBet=cpuBet();
+    await showBetOverlay();
+  }
   renderScoreboard();
   G.turnIndicator=G.playerFirst?'player':'cpu';
   renderScoreboard();
@@ -387,20 +399,23 @@ async function applyTeamAbility(abilityInfo,who,myCards,rivalCards,myScore,rival
 }
 
 // === BET SYSTEM ===
-function showBetOverlay(){
+function showBetOverlay(minBet=1){
   return new Promise(resolve=>{
     const o=$('#bet-overlay');
     // Render player's current hand inside the bet overlay
     $('#bet-current-hand').innerHTML=G.playerHand.map(c=>cardHTML(c)).join('');
-    o.classList.add('show');
+    // Disable bets below minimum
     $$('.bet-btn').forEach(btn=>{
+      const val=parseInt(btn.dataset.bet);
+      if(val<minBet){btn.classList.add('btn-disabled')}else{btn.classList.remove('btn-disabled')}
       btn.onclick=()=>{
-        const val=parseInt(btn.dataset.bet);
+        if(val<minBet)return;
         G.playerBet=val;
         o.classList.remove('show');
         resolve(val);
       };
     });
+    o.classList.add('show');
   });
 }
 
@@ -834,16 +849,22 @@ async function resolveBaza(){
   const result=pScore>cScore?'win':pScore<cScore?'lose':'draw';
   const r=$('#play-result');
   if(result==='win'){
-    pScore+=G._doubleBonusPlayer?2:1; // Bonus (doubled by team ability)
+    const baseBonus=G._doubleBonusPlayer?2:1;
+    const streakBonus=G.playerStreak>=2?G.playerStreak*5:0; // +5,+10,+15... per streak
+    pScore+=baseBonus+streakBonus;
     G.playerBazas++;G.playerStreak++;G.cpuStreak=0;
-    r.textContent=`GANAS! ${pScore}-${cScore}`;r.className='play-result win';
+    const streakTxt=streakBonus>0?` (+${streakBonus} racha)`:'';
+    r.textContent=`GANAS! ${pScore}-${cScore}${streakTxt}`;r.className='play-result win';
     vibrate([100,50,100]);
   }else if(result==='lose'){
-    cScore+=G._doubleBonusCpu?2:1;
+    const baseBonus=G._doubleBonusCpu?2:1;
+    const streakBonus=G.cpuStreak>=2?G.cpuStreak*5:0;
+    cScore+=baseBonus+streakBonus;
     G.cpuBazas++;G.cpuStreak++;G.playerStreak=0;
     r.textContent=`PIERDES ${pScore}-${cScore}`;r.className='play-result lose';
     vibrate(200);
   }else{
+    G.playerStreak=0;G.cpuStreak=0;
     r.textContent=`EMPATE ${pScore}-${cScore}`;r.className='play-result draw';
   }
   r.classList.add('show');
@@ -855,10 +876,19 @@ async function resolveBaza(){
   renderScoreboard();
   await wait(2000);
   r.classList.remove('show');
-  // Check win conditions
-  const winner=checkWin();
-  if(winner){
-    endGame(winner);return;
+  // Check match state
+  const matchState=checkWin();
+  if(matchState==='halftime'){
+    await handleHalftime();return;
+  }
+  if(matchState==='extra_time'){
+    await handleExtraTime();return;
+  }
+  if(matchState==='penalties'){
+    await handlePenalties();return;
+  }
+  if(matchState==='player'||matchState==='cpu'||matchState==='draw'){
+    endGame(matchState);return;
   }
   // Draw phase
   await drawPhase();
@@ -887,16 +917,166 @@ function getTeamAbility(cards){
 }
 
 function checkWin(){
-  if(G.playerScore>=1000)return'player';
-  if(G.cpuScore>=1000)return'cpu';
-  if(G.playerBazas>=10)return'player';
-  if(G.cpuBazas>=10)return'cpu';
-  if(G.playerStreak>=7)return'player';
-  if(G.cpuStreak>=7)return'cpu';
-  // Check if both hands empty and deck empty
-  if(G.deck.length===0&&G.playerHand.length===0&&G.cpuHand.length===0)
-    return G.playerScore>G.cpuScore?'player':G.cpuScore>G.playerScore?'cpu':'draw';
+  const HALF_LENGTH=10;
+  const EXTRA_LENGTH=3;
+  if(G.period==='first_half'&&G.bazaNum>=HALF_LENGTH){
+    return'halftime';
+  }
+  if(G.period==='second_half'&&G.bazaNum>=HALF_LENGTH*2){
+    if(G.playerScore!==G.cpuScore)
+      return G.playerScore>G.cpuScore?'player':'cpu';
+    return'extra_time';
+  }
+  if(G.period==='extra_time'&&G.bazaNum>=HALF_LENGTH*2+EXTRA_LENGTH){
+    if(G.playerScore!==G.cpuScore)
+      return G.playerScore>G.cpuScore?'player':'cpu';
+    return'penalties';
+  }
+  // Deck exhaustion fallback
+  if(G.deck.length===0&&G.playerHand.length===0&&G.cpuHand.length===0){
+    if(G.playerScore!==G.cpuScore)
+      return G.playerScore>G.cpuScore?'player':'cpu';
+    if(G.period==='first_half')return'halftime';
+    if(G.period==='second_half')return'extra_time';
+    return'penalties';
+  }
   return null;
+}
+
+// ==================== MATCH FLOW ====================
+async function handleHalftime(){
+  await showEventMsg('\u{1F3DF}\uFE0F Descanso!',`${G.playerScore} - ${G.cpuScore}`);
+  // Allow player to change formation
+  await showHalftimeOverlay();
+  // CPU may also change formation
+  G.cpuFormation=cpuPickFormation();
+  await showEventMsg(`\u{1F916} CPU cambia a ${G.cpuFormation.name}`,G.cpuFormation.desc);
+  G.period='second_half';
+  G.epicMode=null;
+  saveGame();
+  await nextBaza();
+}
+
+function showHalftimeOverlay(){
+  return new Promise(resolve=>{
+    const o=$('#halftime-overlay');
+    $('#ht-score').textContent=`${G.playerScore} - ${G.cpuScore}`;
+    $('#ht-bazas').textContent=`Bazas: ${G.playerBazas} - ${G.cpuBazas}`;
+    $('#ht-formation').textContent=`Formacion actual: ${G.playerFormation.name}`;
+    // Render current hand
+    $('#ht-current-hand').innerHTML=G.playerHand.map(c=>cardHTML(c)).join('');
+    o.classList.add('show');
+    // Keep same formation
+    $('#btn-ht-keep').onclick=()=>{o.classList.remove('show');resolve()};
+    // Change formation
+    $$('#halftime-overlay .formation-card').forEach(card=>{
+      card.onclick=()=>{
+        const fid=card.dataset.formation;
+        G.playerFormation=FORMATIONS.find(f=>f.id===fid);
+        o.classList.remove('show');
+        resolve();
+      };
+    });
+  });
+}
+
+async function handleExtraTime(){
+  await showEventMsg('\u{231B} Prorroga!','3 bazas con apuesta minima x2');
+  G.period='extra_time';
+  G.epicMode=null;
+  saveGame();
+  await nextBaza();
+}
+
+async function handlePenalties(){
+  await showEventMsg('\u{26BD} Penaltis!','5 rondas · 1 carta por ronda');
+  G.period='penalties';
+  G.penaltyRound=0;G.penaltyPlayer=0;G.penaltyCpu=0;
+  for(let round=1;round<=5;round++){
+    G.penaltyRound=round;
+    // Refill hands if needed
+    while(G.playerHand.length<1&&G.deck.length>0)G.playerHand.push(G.deck.pop());
+    while(G.cpuHand.length<1&&G.deck.length>0)G.cpuHand.push(G.deck.pop());
+    if(G.playerHand.length===0&&G.cpuHand.length===0)break;
+    renderGame();
+    await showEventMsg(`\u{26BD} Penalti ${round}/5`,`${G.penaltyPlayer} - ${G.penaltyCpu}`);
+    // Player picks one card
+    const pCard=await pickPenaltyCard();
+    // CPU picks highest card
+    const cCard=G.cpuHand.sort((a,b)=>(b.rating||0)-(a.rating||0))[0];
+    G.cpuHand=G.cpuHand.filter(c=>c.id!==cCard.id);
+    const pVal=pCard.rating||0;
+    const cVal=cCard.rating||0;
+    G.playerPlay=[pCard];G.cpuPlay=[cCard];
+    renderPlayerPlay();renderCpuPlay();
+    await wait(800);
+    if(pVal>=cVal)G.penaltyPlayer++;
+    if(cVal>=pVal)G.penaltyCpu++;
+    const rEl=$('#play-result');
+    if(pVal>cVal){rEl.textContent=`GOL! ${pVal} vs ${cVal}`;rEl.className='play-result win'}
+    else if(cVal>pVal){rEl.textContent=`PARADO ${pVal} vs ${cVal}`;rEl.className='play-result lose'}
+    else{rEl.textContent=`DOBLE GOL ${pVal}`;rEl.className='play-result draw'}
+    rEl.classList.add('show');
+    await wait(1800);
+    rEl.classList.remove('show');
+    G.discard.push(pCard,cCard);
+    G.playerPlay=[];G.cpuPlay=[];
+    clearPlayZone();
+    // Early finish: if one side can't be caught
+    const remaining=5-round;
+    if(G.penaltyPlayer>G.penaltyCpu+remaining||G.penaltyCpu>G.penaltyPlayer+remaining)break;
+  }
+  // Penalty result
+  if(G.penaltyPlayer!==G.penaltyCpu){
+    endGame(G.penaltyPlayer>G.penaltyCpu?'player':'cpu');
+  }else{
+    // Sudden death
+    await showEventMsg('\u{1F631} Muerte subita!','Gana el primero que falle');
+    let sdRound=0;
+    while(G.penaltyPlayer===G.penaltyCpu){
+      sdRound++;
+      while(G.playerHand.length<1&&G.deck.length>0)G.playerHand.push(G.deck.pop());
+      while(G.cpuHand.length<1&&G.deck.length>0)G.cpuHand.push(G.deck.pop());
+      if(G.playerHand.length===0&&G.cpuHand.length===0)break;
+      renderGame();
+      const pCard=await pickPenaltyCard();
+      const cCard=G.cpuHand.sort((a,b)=>(b.rating||0)-(a.rating||0))[0];
+      G.cpuHand=G.cpuHand.filter(c=>c.id!==cCard.id);
+      G.playerPlay=[pCard];G.cpuPlay=[cCard];
+      renderPlayerPlay();renderCpuPlay();
+      await wait(800);
+      const pVal=pCard.rating||0,cVal=cCard.rating||0;
+      if(pVal>=cVal)G.penaltyPlayer++;
+      if(cVal>=pVal)G.penaltyCpu++;
+      const rEl=$('#play-result');
+      rEl.textContent=`${pVal} vs ${cVal}`;
+      rEl.className='play-result '+(pVal>cVal?'win':cVal>pVal?'lose':'draw');
+      rEl.classList.add('show');
+      await wait(1500);
+      rEl.classList.remove('show');
+      G.discard.push(pCard,cCard);
+      G.playerPlay=[];G.cpuPlay=[];clearPlayZone();
+      if(sdRound>10)break; // Safety
+    }
+    endGame(G.penaltyPlayer>=G.penaltyCpu?'player':'cpu');
+  }
+}
+
+function pickPenaltyCard(){
+  return new Promise(resolve=>{
+    const el=$('#player-hand');
+    el.innerHTML=G.playerHand.map(c=>{
+      const html=cardHTML(c);
+      return html.replace('data-id=',`onclick="window._penaltyPick(${c.id})" data-id=`);
+    }).join('');
+    window._penaltyPick=(id)=>{
+      const card=G.playerHand.find(c=>c.id===id);
+      if(!card)return;
+      G.playerHand=G.playerHand.filter(c=>c.id!==id);
+      window._penaltyPick=null;
+      resolve(card);
+    };
+  });
 }
 
 // ==================== DRAW PHASE ====================
@@ -1056,7 +1236,7 @@ function endGame(winner){
   else if(winner==='cpu'){title.textContent='DERROTA';title.className='end-result defeat'}
   else{title.textContent='EMPATE';title.className='end-result defeat'}
   const statsDiv=$('#end-stats');
-  const reason=G.playerScore>=1000||G.cpuScore>=1000?'1000 puntos':G.playerBazas>=10||G.cpuBazas>=10?'10 bazas':G.playerStreak>=7||G.cpuStreak>=7?'7 bazas seguidas':'Fin del mazo';
+  const reason=G.period==='penalties'?`Penaltis (${G.penaltyPlayer}-${G.penaltyCpu})`:G.period==='extra_time'?'Prorroga':G.period==='second_half'?'Tiempo reglamentario':'1er tiempo';
   const cpuP=G.cpuPersonality?CPU_PERSONALITIES[G.cpuPersonality]:null;
   statsDiv.innerHTML=`
     <div class="end-stat"><span>Tu puntuacion</span><span>${G.playerScore}</span></div>
@@ -1065,7 +1245,7 @@ function endGame(winner){
     <div class="end-stat"><span>Bazas CPU</span><span>${G.cpuBazas}</span></div>
     <div class="end-stat"><span>Mejor racha</span><span>${Math.max(G.playerStreak,stats.bestStreak)}</span></div>
     <div class="end-stat"><span>Bazas totales</span><span>${G.bazaNum}</span></div>
-    <div class="end-stat"><span>Victoria por</span><span>${reason}</span></div>
+    <div class="end-stat"><span>Resultado por</span><span>${reason}</span></div>
     ${G.playerFormation?`<div class="end-stat"><span>Tu formacion</span><span>${G.playerFormation.name}</span></div>`:''}
     ${cpuP?`<div class="end-stat"><span>CPU rival</span><span>${cpuP.icon} ${cpuP.name}</span></div>`:''}
   `;
@@ -1168,10 +1348,10 @@ function animateScore(el,target){
 function renderScoreboard(){
   animateScore($('#sc-player'),G.playerScore);
   animateScore($('#sc-cpu'),G.cpuScore);
-  const fmtP=G.playerFormation?G.playerFormation.name:'';
-  const fmtC=G.cpuFormation?G.cpuFormation.name:'';
-  const formInfo=fmtP?` · ${fmtP} vs ${fmtC}`:'';
-  $('#sc-bazas').textContent=`Baza ${G.bazaNum} \u00B7 ${G.playerBazas}-${G.cpuBazas}${formInfo}`;
+  const periodLabel=G.period==='first_half'?'1T':G.period==='second_half'?'2T':G.period==='extra_time'?'PR':'PEN';
+  const bazaInPeriod=G.period==='first_half'?G.bazaNum:G.period==='second_half'?G.bazaNum-10:G.period==='extra_time'?G.bazaNum-20:G.penaltyRound;
+  const periodMax=G.period==='extra_time'?3:G.period==='penalties'?5:10;
+  $('#sc-bazas').textContent=`${periodLabel} ${bazaInPeriod}/${periodMax} \u00B7 ${G.playerBazas}-${G.cpuBazas}`;
   let streak=G.playerStreak>1?`Racha: ${G.playerStreak}`:G.cpuStreak>1?`Racha CPU: ${G.cpuStreak}`:'';
   if(G.epicMode)streak+=` \u{1F525} Epico: ${G.epicMode.who==='player'?'Tu':'CPU'} (${G.epicMode.remaining})`;
   $('#sc-streak').textContent=streak;

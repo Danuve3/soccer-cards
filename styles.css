@@ -424,6 +424,20 @@ animation:shinySlide 3s ease-in-out infinite;
 .formation-label{font-family:var(--font-d);font-size:13px;color:var(--gold);letter-spacing:2px;text-transform:uppercase}
 .formation-desc{font-size:11px;color:var(--text2);margin-top:4px;line-height:1.3}
 
+/* === HALFTIME OVERLAY === */
+#halftime-overlay{
+  gap:6px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;
+}
+.ht-title{font-family:var(--font-d);font-size:36px;color:var(--gold)}
+.ht-score{font-family:var(--font-d);font-size:48px;font-weight:700;color:var(--text)}
+.ht-bazas{font-size:14px;color:var(--text2)}
+.ht-formation{font-size:14px;color:var(--gold2);margin:4px 0}
+.ht-label{font-family:var(--font-d);font-size:16px;color:var(--text2);letter-spacing:1px;margin-top:4px}
+.ht-grid{max-width:280px;gap:8px}
+.ht-grid .formation-card{padding:10px 8px}
+.ht-grid .formation-name{font-size:20px}
+.ht-grid .formation-desc{font-size:10px}
+
 /* === BET OVERLAY === */
 .bet-buttons{display:flex;gap:12px;margin-top:12px}
 .bet-btn{
