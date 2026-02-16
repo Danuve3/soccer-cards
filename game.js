@@ -18,7 +18,6 @@ let G={
   discardNeeded:0,
   animating:false,
   // New mechanics
-  playerBet:1,cpuBet:1,
   playerFormation:null,cpuFormation:null,
   epicMode:null, // {who:'player'|'cpu', remaining:3}
   cpuPersonality:null,
@@ -133,7 +132,6 @@ async function startGame(diff){
     playerPlay:[],cpuPlay:[],
     selected:new Set(),discardSelected:new Set(),discardNeeded:0,
     animating:false,
-    playerBet:1,cpuBet:1,
     playerFormation:null,cpuFormation:null,
     epicMode:null,cpuPersonality:null,
     period:'first_half',penaltyRound:0,penaltyPlayer:0,penaltyCpu:0
@@ -171,7 +169,6 @@ async function continueGame(){
     G.playerFormation=G.playerFormation||null;
     G.cpuFormation=G.cpuFormation||null;
     G.cpuPersonality=G.cpuPersonality||null;
-    G.playerBet=G.playerBet||1;G.cpuBet=G.cpuBet||1;
     G.period=G.period||'first_half';
     G.penaltyRound=G.penaltyRound||0;G.penaltyPlayer=G.penaltyPlayer||0;G.penaltyCpu=G.penaltyCpu||0;
     showScreen('game');
@@ -209,7 +206,6 @@ async function nextBaza(){
   G.bazaNum++;
   G.playerPlay=[];G.cpuPlay=[];
   G.selected=new Set();
-  G.playerBet=1;G.cpuBet=1;
   clearPlayZone();
   renderGame();
   // Check epic mode
@@ -219,16 +215,6 @@ async function nextBaza(){
     const peekCard=G.cpuHand[Math.floor(Math.random()*G.cpuHand.length)];
     await showEventMsg('\u{1F441}\uFE0F Espionaje!',`Rival tiene: ${peekCard.name}${peekCard.rating?' ('+peekCard.rating+')':''}`);
   }
-  // Bet phase
-  if(G.period==='extra_time'){
-    // Extra time: forced minimum 2x
-    G.cpuBet=Math.max(2,cpuBet());
-    await showBetOverlay(2);
-  }else{
-    G.cpuBet=cpuBet();
-    await showBetOverlay();
-  }
-  renderScoreboard();
   G.turnIndicator=G.playerFirst?'player':'cpu';
   renderScoreboard();
   if(!G.playerFirst){
@@ -398,26 +384,6 @@ async function applyTeamAbility(abilityInfo,who,myCards,rivalCards,myScore,rival
   return{myScore,rivalScore};
 }
 
-// === BET SYSTEM ===
-function showBetOverlay(minBet=1){
-  return new Promise(resolve=>{
-    const o=$('#bet-overlay');
-    // Render player's current hand inside the bet overlay
-    $('#bet-current-hand').innerHTML=G.playerHand.map(c=>cardHTML(c)).join('');
-    // Disable bets below minimum
-    $$('.bet-btn').forEach(btn=>{
-      const val=parseInt(btn.dataset.bet);
-      if(val<minBet){btn.classList.add('btn-disabled')}else{btn.classList.remove('btn-disabled')}
-      btn.onclick=()=>{
-        if(val<minBet)return;
-        G.playerBet=val;
-        o.classList.remove('show');
-        resolve(val);
-      };
-    });
-    o.classList.add('show');
-  });
-}
 
 // === EPIC MODE (COMEBACK MECHANIC) ===
 function checkEpicMode(){
@@ -441,33 +407,6 @@ function getEpicBonus(who,cards){
   if(!G.epicMode||G.epicMode.who!==who)return 0;
   const playerCount=cards.filter(c=>c.type==='player'||c.type==='legend').length;
   return playerCount*10; // +10 per player card
-}
-
-function cpuBet(){
-  const diff=G.difficulty;
-  const hand=G.cpuHand;
-  // Evaluate hand strength
-  const maxRating=Math.max(...hand.map(c=>c.rating||0));
-  const totalRating=hand.filter(c=>c.rating>0).reduce((s,c)=>s+c.rating,0);
-  const hasShield=hand.some(c=>c.type==='shield');
-  const personality=G.cpuPersonality;
-
-  if(diff==='easy')return 1;
-  if(diff==='normal'){
-    if(totalRating>300&&hasShield)return 2;
-    return 1;
-  }
-  // Hard: smarter betting based on hand quality and personality
-  if(personality==='aggressive'){
-    if(totalRating>250)return 3;
-    if(totalRating>150)return 2;
-    return 1;
-  }
-  if(personality==='conservative')return 1;
-  // Default hard
-  if(totalRating>350&&hasShield)return 3;
-  if(totalRating>250||maxRating>=90)return 2;
-  return 1;
 }
 
 function clearPlayZone(){
@@ -842,9 +781,6 @@ async function resolveBaza(){
   // Apply formation bonuses to base score
   pScore=applyFormationToScore(pScore,G.playerPlay,G.playerFormation);
   cScore=applyFormationToScore(cScore,G.cpuPlay,G.cpuFormation);
-  // Apply bets
-  pScore=Math.round(pScore*G.playerBet);
-  cScore=Math.round(cScore*G.cpuBet);
   // Determine winner
   const result=pScore>cScore?'win':pScore<cScore?'lose':'draw';
   const r=$('#play-result');
@@ -980,7 +916,7 @@ function showHalftimeOverlay(){
 }
 
 async function handleExtraTime(){
-  await showEventMsg('\u{231B} Prorroga!','3 bazas con apuesta minima x2');
+  await showEventMsg('\u{231B} Prorroga!','3 bazas extra');
   G.period='extra_time';
   G.epicMode=null;
   saveGame();
@@ -1281,13 +1217,6 @@ function renderMatchInfo(){
   const cForm=$('#info-c-formation');
   pForm.textContent=G.playerFormation?G.playerFormation.name:'';
   cForm.textContent=G.cpuFormation?G.cpuFormation.name:'';
-  // Bets
-  const pBet=$('#info-p-bet');
-  const cBet=$('#info-c-bet');
-  pBet.textContent=G.playerBet+'x';
-  pBet.className='info-bet'+(G.playerBet>=3?' bet-max':G.playerBet>=2?' bet-high':' bet-1x');
-  cBet.textContent=G.cpuBet+'x';
-  cBet.className='info-bet'+(G.cpuBet>=3?' bet-max':G.cpuBet>=2?' bet-high':' bet-1x');
 }
 
 function getPlayableIds(){

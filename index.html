@@ -86,8 +86,6 @@
     </ul>
     <h3>Habilidades de Equipo</h3>
     <p>Juega <b>3 o mas jugadores</b> del mismo equipo para activar su habilidad pasiva unica. Cada equipo tiene un poder especial distinto.</p>
-    <h3>Apuestas</h3>
-    <p>Antes de cada baza, elige multiplicador: <b>1x</b> (seguro), <b>2x</b> (arriesgo) o <b>3x</b> (all-in). Los puntos de la baza se multiplican.</p>
     <h3>Modo Epico</h3>
     <p>Si vas perdiendo por 200+ puntos o 4+ bazas, entra el <b>Modo Epico</b>: +10 pts por jugador y eventos con efecto doble durante 3 bazas.</p>
     <h3>Fin de Baza</h3>
@@ -107,7 +105,7 @@
       <li><b>1er Tiempo</b>: 10 bazas</li>
       <li><b>Descanso</b>: puedes cambiar formacion</li>
       <li><b>2do Tiempo</b>: 10 bazas mas</li>
-      <li><b>Prorroga</b>: si hay empate, 3 bazas con apuesta minima x2</li>
+      <li><b>Prorroga</b>: si hay empate, 3 bazas extra</li>
       <li><b>Penaltis</b>: si sigue empate, 5 rondas de 1 carta cada uno</li>
     </ul>
     <h3>Mercado de Fichajes</h3>
@@ -138,13 +136,11 @@
     <div class="info-side info-player-side">
       <span class="info-name">Tu</span>
       <span class="info-formation" id="info-p-formation"></span>
-      <span class="info-bet" id="info-p-bet"></span>
     </div>
     <div class="info-turn" id="info-turn"></div>
     <div class="info-side info-cpu-side">
       <span class="info-name">CPU</span>
       <span class="info-formation" id="info-c-formation"></span>
-      <span class="info-bet" id="info-c-bet"></span>
     </div>
   </div>
   <div class="scoreboard">
@@ -286,19 +282,6 @@
   </div>
 </div>
 
-<div class="overlay" id="bet-overlay">
-  <div class="overlay-text">Apuesta</div>
-  <div class="overlay-sub">Multiplica los puntos de esta baza</div>
-  <div class="bet-buttons">
-    <button class="btn bet-btn bet-1x" data-bet="1">1x<span>Seguro</span></button>
-    <button class="btn bet-btn bet-2x" data-bet="2">2x<span>Arriesgo</span></button>
-    <button class="btn bet-btn bet-3x" data-bet="3">3x<span>All-in</span></button>
-  </div>
-  <div class="hand-preview">
-    <div class="hand-preview-label">Tu mano actual</div>
-    <div class="hand-preview-cards" id="bet-current-hand"></div>
-  </div>
-</div>
 
 <script src="./data.js"></script>
 <script src="./game.js"></script>
