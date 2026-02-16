@@ -390,6 +390,8 @@ async function applyTeamAbility(abilityInfo,who,myCards,rivalCards,myScore,rival
 function showBetOverlay(){
   return new Promise(resolve=>{
     const o=$('#bet-overlay');
+    // Render player's current hand inside the bet overlay
+    $('#bet-current-hand').innerHTML=G.playerHand.map(c=>cardHTML(c)).join('');
     o.classList.add('show');
     $$('.bet-btn').forEach(btn=>{
       btn.onclick=()=>{
@@ -960,8 +962,8 @@ function showDraftOverlay(available,pickCount){
       return html.replace('data-id=','onclick="toggleDraft('+c.id+')" data-id=');
     }).join('');
     o.classList.add('show');
-    // Render player's current hand (read-only) inside the draft overlay
-    $('#draft-current-hand').innerHTML=G.playerHand.map(c=>cardHTML(c,true)).join('');
+    // Render player's current hand (read-only, full size) inside the draft overlay
+    $('#draft-current-hand').innerHTML=G.playerHand.map(c=>cardHTML(c)).join('');
     window._draftAvailable=available;
     window._draftPicked=picked;
     window._draftMax=pickCount;
