@@ -272,10 +272,30 @@ opacity:0;pointer-events:none;transition:opacity .3s;padding:16px;
 .discard-hand .card{margin-left:0}
 
 /* === DRAFT OVERLAY === */
+#draft-overlay{
+  justify-content:flex-start;padding-top:10vh;
+}
 .draft-title{font-family:var(--font-d);font-size:26px;color:var(--gold)}
 .draft-sub{font-size:14px;color:var(--text2);margin-bottom:8px}
 .draft-hand{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;max-width:400px}
 .draft-hand .card{margin-left:0}
+
+/* When draft is active, elevate player hand above the overlay */
+.drafting .player-hand-area{
+  position:relative;z-index:90;
+  background:var(--bg);
+  border-top:2px solid var(--gold3);
+  box-shadow:0 -8px 30px rgba(0,0,0,.6);
+}
+.drafting .action-bar{
+  position:relative;z-index:90;
+}
+.drafting .player-hand-area::before{
+  content:'Tu mano actual';
+  display:block;text-align:center;
+  font-family:var(--font-d);font-size:12px;letter-spacing:2px;
+  text-transform:uppercase;color:var(--gold);padding:4px 0 0;
+}
 
 /* === ANIMATIONS === */
 @keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}

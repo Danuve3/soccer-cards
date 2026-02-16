@@ -960,6 +960,7 @@ function showDraftOverlay(available,pickCount){
       return html.replace('data-id=','onclick="toggleDraft('+c.id+')" data-id=');
     }).join('');
     o.classList.add('show');
+    $('#game').classList.add('drafting');
     window._draftAvailable=available;
     window._draftPicked=picked;
     window._draftMax=pickCount;
@@ -992,6 +993,7 @@ function confirmDraft(){
   if(picked.size!==window._draftMax)return;
   const cards=window._draftAvailable.filter(c=>picked.has(c.id));
   $('#draft-overlay').classList.remove('show');
+  $('#game').classList.remove('drafting');
   if(window._draftResolve){window._draftResolve(cards);window._draftResolve=null}
 }
 
