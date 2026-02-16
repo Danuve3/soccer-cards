@@ -134,7 +134,19 @@
 
 <!-- GAME -->
 <div id="game" class="screen hidden">
-  <div class="rival-area" id="rival-hand"></div>
+  <div class="match-info-bar" id="match-info">
+    <div class="info-side info-player-side">
+      <span class="info-name">Tu</span>
+      <span class="info-formation" id="info-p-formation"></span>
+      <span class="info-bet" id="info-p-bet"></span>
+    </div>
+    <div class="info-turn" id="info-turn"></div>
+    <div class="info-side info-cpu-side">
+      <span class="info-name">CPU</span>
+      <span class="info-formation" id="info-c-formation"></span>
+      <span class="info-bet" id="info-c-bet"></span>
+    </div>
+  </div>
   <div class="scoreboard">
     <div class="score-player">
       <span class="score-label">Bazas</span>
@@ -143,9 +155,7 @@
     <div class="score-center">
       <span class="score-period" id="sc-period">1T</span>
       <span class="score-bazas" id="sc-bazas">1/10</span>
-      <span class="turn-indicator" id="sc-turn"></span>
       <span class="score-streak" id="sc-streak"></span>
-      <span class="bet-indicator" id="sc-bets"></span>
       <span class="deck-indicator" id="sc-deck">Mazo: 0</span>
     </div>
     <div class="score-cpu">

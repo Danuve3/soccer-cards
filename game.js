@@ -236,7 +236,7 @@ async function nextBaza(){
     await wait(800);
     cpuTurn();
     renderCpuPlay();
-    renderRivalHand();
+    renderMatchInfo();
     await wait(600);
     G.animating=false;
     G.turnIndicator='player';
@@ -540,7 +540,7 @@ async function playSelected(){
     await wait(800);
     cpuTurn(G.playerPlay); // CPU sees player's cards and can respond
     renderCpuPlay();
-    renderRivalHand();
+    renderMatchInfo();
     await wait(600);
   }
   await resolveBaza();
@@ -1265,14 +1265,29 @@ function spawnConfetti(){
 
 // ==================== RENDERING ====================
 function renderGame(){
-  renderRivalHand();
+  renderMatchInfo();
   renderHand();
   renderScoreboard();
 }
 
-function renderRivalHand(){
-  const el=$('#rival-hand');
-  el.innerHTML=G.cpuHand.map(()=>'<div class="rival-card-back">\u26BD</div>').join('');
+function renderMatchInfo(){
+  // Turn indicator
+  const turnEl=$('#info-turn');
+  if(G.turnIndicator==='player'){turnEl.textContent='TU TURNO';turnEl.className='info-turn turn-player'}
+  else if(G.turnIndicator==='cpu'){turnEl.textContent='TURNO CPU';turnEl.className='info-turn turn-cpu'}
+  else{turnEl.textContent='';turnEl.className='info-turn'}
+  // Formations
+  const pForm=$('#info-p-formation');
+  const cForm=$('#info-c-formation');
+  pForm.textContent=G.playerFormation?G.playerFormation.name:'';
+  cForm.textContent=G.cpuFormation?G.cpuFormation.name:'';
+  // Bets
+  const pBet=$('#info-p-bet');
+  const cBet=$('#info-c-bet');
+  pBet.textContent=G.playerBet+'x';
+  pBet.className='info-bet'+(G.playerBet>=3?' bet-max':G.playerBet>=2?' bet-high':' bet-1x');
+  cBet.textContent=G.cpuBet+'x';
+  cBet.className='info-bet'+(G.cpuBet>=3?' bet-max':G.cpuBet>=2?' bet-high':' bet-1x');
 }
 
 function getPlayableIds(){
@@ -1353,22 +1368,7 @@ function renderScoreboard(){
   if(G.epicMode)streak+=` \u{1F525} Epico: ${G.epicMode.who==='player'?'Tu':'CPU'} (${G.epicMode.remaining})`;
   $('#sc-streak').textContent=streak;
   $('#sc-deck').textContent=`Mazo: ${G.deck.length}`;
-  // Show bets
-  const betInfo=$('#sc-bets');
-  if(betInfo){
-    if(G.playerBet>1||G.cpuBet>1){
-      const pBet=G.playerBet>1?`Tu: ${G.playerBet}x`:'';
-      const cBet=G.cpuBet>1?`CPU: ${G.cpuBet}x`:'';
-      betInfo.textContent=[pBet,cBet].filter(Boolean).join(' · ');
-      betInfo.className='bet-indicator'+(G.playerBet>=3||G.cpuBet>=3?' bet-max':' bet-high');
-    }else{
-      betInfo.textContent='';betInfo.className='bet-indicator';
-    }
-  }
-  const turnEl=$('#sc-turn');
-  if(G.turnIndicator==='player'){turnEl.textContent='TU TURNO';turnEl.className='turn-indicator turn-player'}
-  else if(G.turnIndicator==='cpu'){turnEl.textContent='TURNO CPU';turnEl.className='turn-indicator turn-cpu'}
-  else{turnEl.textContent='';turnEl.className='turn-indicator'}
+  renderMatchInfo();
 }
 
 // ==================== GAME MENU ====================

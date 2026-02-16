@@ -77,17 +77,24 @@ cursor:pointer;transition:all .2s var(--ease);
 
 /* === GAME === */
 #game{padding:0;gap:0;justify-content:space-between}
-.rival-area{
-width:100%;padding:8px 10px;display:flex;justify-content:center;gap:-8px;
-background:linear-gradient(180deg,rgba(0,0,0,.3),transparent);min-height:56px;
+.match-info-bar{
+width:100%;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;
+background:linear-gradient(180deg,rgba(0,0,0,.35),transparent);min-height:44px;gap:8px;
 }
-.rival-card-back{
-width:36px;height:50px;border-radius:4px;background:var(--bg3);
-border:1.5px solid var(--bg4);margin-left:-8px;flex-shrink:0;
-display:flex;align-items:center;justify-content:center;font-size:14px;
-background-image:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(212,175,55,.07) 3px,rgba(212,175,55,.07) 6px);
+.info-side{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:80px}
+.info-name{font-family:var(--font-d);font-size:13px;color:var(--text2);letter-spacing:1px;text-transform:uppercase}
+.info-formation{font-family:var(--font-d);font-size:15px;color:var(--text);letter-spacing:.5px}
+.info-bet{font-family:var(--font-d);font-size:14px;letter-spacing:1px}
+.info-bet.bet-1x{color:var(--text3)}
+.info-bet.bet-high{color:var(--gold)}
+.info-bet.bet-max{color:var(--red)}
+.info-turn{
+font-family:var(--font-d);font-size:15px;letter-spacing:2px;text-transform:uppercase;
+padding:4px 14px;border-radius:6px;min-height:26px;min-width:100px;text-align:center;
+transition:all .3s var(--ease);
 }
-.rival-card-back:first-child{margin-left:0}
+.info-turn.turn-player{color:var(--green);background:rgba(46,204,113,.15);animation:turnPulse 1.5s ease-in-out infinite}
+.info-turn.turn-cpu{color:var(--red);background:rgba(230,57,70,.15)}
 .scoreboard{
 width:100%;padding:6px 12px;display:flex;justify-content:space-between;align-items:center;
 background:var(--bg2);border-bottom:1px solid var(--bg4);font-family:var(--font-d);
@@ -100,13 +107,6 @@ background:var(--bg2);border-bottom:1px solid var(--bg4);font-family:var(--font-
 .score-center{display:flex;flex-direction:column;align-items:center;gap:0}
 .score-period{font-size:22px;font-weight:700;color:var(--gold);line-height:1.1;letter-spacing:1px}
 .score-bazas{font-size:13px;color:var(--text2);line-height:1}
-.turn-indicator{
-font-size:13px;letter-spacing:2px;text-transform:uppercase;
-padding:2px 10px;border-radius:4px;min-height:18px;
-transition:all .3s var(--ease);
-}
-.turn-indicator.turn-player{color:var(--green);background:rgba(46,204,113,.12);animation:turnPulse 1.5s ease-in-out infinite}
-.turn-indicator.turn-cpu{color:var(--red);background:rgba(230,57,70,.12)}
 @keyframes turnPulse{0%,100%{opacity:1}50%{opacity:.55}}
 .score-streak{font-size:11px;color:var(--gold)}
 .deck-indicator{font-size:12px;color:var(--text3);text-align:center;padding:2px 0}
@@ -456,10 +456,3 @@ animation:shinySlide 3s ease-in-out infinite;
 .bet-3x{border-color:var(--red)}
 .bet-3x:hover,.bet-3x:active{background:rgba(230,57,70,.15)}
 
-/* === BET INDICATOR === */
-.bet-indicator{
-  font-family:var(--font-d);font-size:11px;letter-spacing:1px;
-  padding:1px 6px;border-radius:3px;display:inline-block;
-}
-.bet-indicator.bet-high{color:var(--gold);background:rgba(212,175,55,.15)}
-.bet-indicator.bet-max{color:var(--red);background:rgba(230,57,70,.15)}
