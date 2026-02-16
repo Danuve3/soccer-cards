@@ -273,29 +273,31 @@ opacity:0;pointer-events:none;transition:opacity .3s;padding:16px;
 
 /* === DRAFT OVERLAY === */
 #draft-overlay{
-  justify-content:flex-start;padding-top:10vh;
+  justify-content:center;gap:0;padding:12px 16px;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
+.draft-section{
+  display:flex;flex-direction:column;align-items:center;width:100%;
+}
+.draft-market{gap:8px}
 .draft-title{font-family:var(--font-d);font-size:26px;color:var(--gold)}
-.draft-sub{font-size:14px;color:var(--text2);margin-bottom:8px}
+.draft-sub{font-size:14px;color:var(--text2)}
 .draft-hand{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;max-width:400px}
 .draft-hand .card{margin-left:0}
-
-/* When draft is active, elevate player hand above the overlay */
-.drafting .player-hand-area{
-  position:relative;z-index:90;
-  background:var(--bg);
-  border-top:2px solid var(--gold3);
-  box-shadow:0 -8px 30px rgba(0,0,0,.6);
+.draft-current{
+  margin-top:12px;padding-top:10px;
+  border-top:1px solid rgba(212,175,55,.25);
 }
-.drafting .action-bar{
-  position:relative;z-index:90;
+.draft-current-label{
+  font-family:var(--font-d);font-size:13px;letter-spacing:2px;
+  text-transform:uppercase;color:var(--gold);margin-bottom:6px;opacity:.7;
 }
-.drafting .player-hand-area::before{
-  content:'Tu mano actual';
-  display:block;text-align:center;
-  font-family:var(--font-d);font-size:12px;letter-spacing:2px;
-  text-transform:uppercase;color:var(--gold);padding:4px 0 0;
+.draft-current-hand{
+  display:flex;flex-wrap:nowrap;justify-content:center;gap:4px;
+  opacity:.85;pointer-events:none;
 }
+.draft-current-hand .card{margin-left:0;transform:scale(.85);cursor:default}
+.draft-current-hand .card-mini{width:52px;height:73px}
 
 /* === ANIMATIONS === */
 @keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}

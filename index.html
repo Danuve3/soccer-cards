@@ -189,10 +189,16 @@
 </div>
 
 <div class="discard-overlay" id="draft-overlay">
-  <div class="draft-title">Mercado de Fichajes</div>
-  <div class="draft-sub">Elige <span id="draft-count">0</span> cartas · Quedan: <span id="draft-remaining">0</span></div>
-  <div class="draft-hand" id="draft-hand"></div>
-  <button class="btn btn-primary btn-disabled" id="btn-draft" onclick="confirmDraft()">Fichar</button>
+  <div class="draft-section draft-market">
+    <div class="draft-title">Mercado de Fichajes</div>
+    <div class="draft-sub">Elige <span id="draft-count">0</span> cartas · Quedan: <span id="draft-remaining">0</span></div>
+    <div class="draft-hand" id="draft-hand"></div>
+    <button class="btn btn-primary btn-disabled" id="btn-draft" onclick="confirmDraft()">Fichar</button>
+  </div>
+  <div class="draft-section draft-current">
+    <div class="draft-current-label">Tu mano actual</div>
+    <div class="draft-current-hand" id="draft-current-hand"></div>
+  </div>
 </div>
 
 <div class="overlay" id="event-overlay">
