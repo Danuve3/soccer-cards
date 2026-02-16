@@ -923,19 +923,19 @@ function checkWin(){
     return'halftime';
   }
   if(G.period==='second_half'&&G.bazaNum>=HALF_LENGTH*2){
-    if(G.playerScore!==G.cpuScore)
-      return G.playerScore>G.cpuScore?'player':'cpu';
+    if(G.playerBazas!==G.cpuBazas)
+      return G.playerBazas>G.cpuBazas?'player':'cpu';
     return'extra_time';
   }
   if(G.period==='extra_time'&&G.bazaNum>=HALF_LENGTH*2+EXTRA_LENGTH){
-    if(G.playerScore!==G.cpuScore)
-      return G.playerScore>G.cpuScore?'player':'cpu';
+    if(G.playerBazas!==G.cpuBazas)
+      return G.playerBazas>G.cpuBazas?'player':'cpu';
     return'penalties';
   }
   // Deck exhaustion fallback
   if(G.deck.length===0&&G.playerHand.length===0&&G.cpuHand.length===0){
-    if(G.playerScore!==G.cpuScore)
-      return G.playerScore>G.cpuScore?'player':'cpu';
+    if(G.playerBazas!==G.cpuBazas)
+      return G.playerBazas>G.cpuBazas?'player':'cpu';
     if(G.period==='first_half')return'halftime';
     if(G.period==='second_half')return'extra_time';
     return'penalties';
@@ -960,8 +960,7 @@ async function handleHalftime(){
 function showHalftimeOverlay(){
   return new Promise(resolve=>{
     const o=$('#halftime-overlay');
-    $('#ht-score').textContent=`${G.playerScore} - ${G.cpuScore}`;
-    $('#ht-bazas').textContent=`Bazas: ${G.playerBazas} - ${G.cpuBazas}`;
+    $('#ht-score').textContent=`${G.playerBazas} - ${G.cpuBazas}`;
     $('#ht-formation').textContent=`Formacion actual: ${G.playerFormation.name}`;
     // Render current hand
     $('#ht-current-hand').innerHTML=G.playerHand.map(c=>cardHTML(c)).join('');
@@ -1239,10 +1238,7 @@ function endGame(winner){
   const reason=G.period==='penalties'?`Penaltis (${G.penaltyPlayer}-${G.penaltyCpu})`:G.period==='extra_time'?'Prorroga':G.period==='second_half'?'Tiempo reglamentario':'1er tiempo';
   const cpuP=G.cpuPersonality?CPU_PERSONALITIES[G.cpuPersonality]:null;
   statsDiv.innerHTML=`
-    <div class="end-stat"><span>Tu puntuacion</span><span>${G.playerScore}</span></div>
-    <div class="end-stat"><span>CPU puntuacion</span><span>${G.cpuScore}</span></div>
-    <div class="end-stat"><span>Bazas ganadas</span><span>${G.playerBazas}</span></div>
-    <div class="end-stat"><span>Bazas CPU</span><span>${G.cpuBazas}</span></div>
+    <div class="end-stat"><span>Resultado</span><span>${G.playerBazas} - ${G.cpuBazas}</span></div>
     <div class="end-stat"><span>Mejor racha</span><span>${Math.max(G.playerStreak,stats.bestStreak)}</span></div>
     <div class="end-stat"><span>Bazas totales</span><span>${G.bazaNum}</span></div>
     <div class="end-stat"><span>Resultado por</span><span>${reason}</span></div>
@@ -1346,12 +1342,13 @@ function animateScore(el,target){
 }
 
 function renderScoreboard(){
-  animateScore($('#sc-player'),G.playerScore);
-  animateScore($('#sc-cpu'),G.cpuScore);
-  const periodLabel=G.period==='first_half'?'1T':G.period==='second_half'?'2T':G.period==='extra_time'?'PR':'PEN';
+  animateScore($('#sc-player'),G.playerBazas);
+  animateScore($('#sc-cpu'),G.cpuBazas);
+  const periodLabel=G.period==='first_half'?'1er Tiempo':G.period==='second_half'?'2do Tiempo':G.period==='extra_time'?'Prorroga':'Penaltis';
   const bazaInPeriod=G.period==='first_half'?G.bazaNum:G.period==='second_half'?G.bazaNum-10:G.period==='extra_time'?G.bazaNum-20:G.penaltyRound;
   const periodMax=G.period==='extra_time'?3:G.period==='penalties'?5:10;
-  $('#sc-bazas').textContent=`${periodLabel} ${bazaInPeriod}/${periodMax} \u00B7 ${G.playerBazas}-${G.cpuBazas}`;
+  $('#sc-period').textContent=periodLabel;
+  $('#sc-bazas').textContent=`Baza ${bazaInPeriod}/${periodMax}`;
   let streak=G.playerStreak>1?`Racha: ${G.playerStreak}`:G.cpuStreak>1?`Racha CPU: ${G.cpuStreak}`:'';
   if(G.epicMode)streak+=` \u{1F525} Epico: ${G.epicMode.who==='player'?'Tu':'CPU'} (${G.epicMode.remaining})`;
   $('#sc-streak').textContent=streak;
