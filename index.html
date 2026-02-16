@@ -127,18 +127,20 @@
     </ul>
     <h3>Personalidades CPU</h3>
     <p>La CPU tiene personalidad propia cada partida: Conservador, Agresivo, Tramposo o Tactico. Cada uno juega de forma distinta.</p>
+    <h3>Cambios al descanso</h3>
+    <p>En el descanso, antes de la prorroga y antes de los penaltis, puedes <b>descartarte de hasta 5 cartas</b> y robar nuevas del mazo. La CPU tambien hace cambios automaticamente.</p>
     <h3>Formato Partido</h3>
     <ul>
       <li><b>1er Tiempo</b>: 10 bazas</li>
-      <li><b>Descanso</b>: puedes cambiar formacion</li>
+      <li><b>Descanso</b>: cambios + cambiar formacion</li>
       <li><b>2do Tiempo</b>: 10 bazas mas</li>
-      <li><b>Prorroga</b>: si hay empate, 3 bazas extra</li>
-      <li><b>Penaltis</b>: si sigue empate, 5 rondas de 1 carta cada uno</li>
+      <li><b>Prorroga</b>: si hay empate, cambios + 3 bazas extra</li>
+      <li><b>Penaltis</b>: si sigue empate, cambios + 5 rondas de 1 carta cada uno</li>
     </ul>
     <h3>Mercado de Fichajes</h3>
     <p>Tras cada baza, en vez de robar a ciegas, eliges cartas de un mercado abierto. El <b>perdedor de la baza elige primero</b> como consolacion.</p>
     <h3>Puntuacion</h3>
-    <p>Se suman los valores de las cartas jugadas. El ganador recibe +1 punto de bonificacion.</p>
+    <p>Se suman los valores de las cartas jugadas. El ganador de cada baza recibe +1 gol.</p>
   </div>
 </div>
 
@@ -149,7 +151,7 @@
     <div class="stat-box"><div class="sv" id="stat-wins">0</div><div class="sl">Victorias</div></div>
     <div class="stat-box"><div class="sv" id="stat-losses">0</div><div class="sl">Derrotas</div></div>
     <div class="stat-box"><div class="sv" id="stat-bazas">0</div><div class="sl">Bazas ganadas</div></div>
-    <div class="stat-box"><div class="sv" id="stat-best">0</div><div class="sl">Mejor racha</div></div>
+    <div class="stat-box"><div class="sv" id="stat-best">0%</div><div class="sl">Ratio victorias</div></div>
     <div class="stat-box"><div class="sv" id="stat-played">0</div><div class="sl">Partidas</div></div>
     <div class="stat-box"><div class="sv" id="stat-pts">0</div><div class="sl">Max puntos</div></div>
   </div>
@@ -270,6 +272,23 @@
   <div class="hand-preview" style="margin-top:10px">
     <div class="hand-preview-label">Tu mano actual</div>
     <div class="hand-preview-cards" id="ht-current-hand"></div>
+  </div>
+</div>
+
+<div class="discard-overlay" id="cambios-overlay">
+  <div class="draft-section draft-market">
+    <div class="draft-title">Cambios al descanso</div>
+    <div class="draft-sub">Descarta hasta <span id="cambios-max">5</span> cartas para robar nuevas del mazo</div>
+    <div class="draft-hand" id="cambios-hand"></div>
+    <div class="cambios-info" id="cambios-info">Seleccionadas: 0</div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-secondary" id="btn-cambios-skip" onclick="skipCambios()" style="width:140px">No cambiar</button>
+      <button class="btn btn-primary" id="btn-cambios-confirm" onclick="confirmCambios()">Confirmar cambios</button>
+    </div>
+  </div>
+  <div class="hand-preview" style="margin-top:10px">
+    <div class="hand-preview-label">Tu mano actual</div>
+    <div class="hand-preview-cards" id="cambios-current-hand"></div>
   </div>
 </div>
 

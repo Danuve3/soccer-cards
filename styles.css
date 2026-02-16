@@ -302,6 +302,15 @@ opacity:0;pointer-events:none;transition:opacity .3s;padding:16px;
 }
 .draft-current-hand .card{margin-left:0;cursor:default}
 
+/* === CAMBIOS OVERLAY === */
+#cambios-overlay{
+  justify-content:center;gap:0;padding:12px 16px;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+.cambios-info{
+  font-family:var(--font-d);font-size:16px;color:var(--text2);margin-top:4px;
+}
+
 /* === HAND PREVIEW (reused in draft + bet) === */
 .hand-preview{
   margin-top:12px;padding-top:10px;

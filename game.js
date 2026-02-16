@@ -9,7 +9,6 @@ let G={
   deck:[],playerHand:[],cpuHand:[],discard:[],
   playerScore:0,cpuScore:0,
   playerBazas:0,cpuBazas:0,
-  playerStreak:0,cpuStreak:0,
   bazaNum:0,
   playerFirst:true,
   playerPlay:[],cpuPlay:[],
@@ -109,8 +108,8 @@ function updateMenuState(){
 
 // ==================== STATS ====================
 function getStats(){
-  try{return JSON.parse(localStorage.getItem('sc_stats'))||{wins:0,losses:0,bazas:0,bestStreak:0,played:0,maxPts:0}}
-  catch(e){return{wins:0,losses:0,bazas:0,bestStreak:0,played:0,maxPts:0}}
+  try{return JSON.parse(localStorage.getItem('sc_stats'))||{wins:0,losses:0,bazas:0,played:0,maxPts:0}}
+  catch(e){return{wins:0,losses:0,bazas:0,played:0,maxPts:0}}
 }
 function saveStats(s){localStorage.setItem('sc_stats',JSON.stringify(s))}
 function updateStats(){
@@ -118,11 +117,11 @@ function updateStats(){
   $('#stat-wins').textContent=s.wins;
   $('#stat-losses').textContent=s.losses;
   $('#stat-bazas').textContent=s.bazas;
-  $('#stat-best').textContent=s.bestStreak;
+  $('#stat-best').textContent=s.played>0?Math.round(s.wins/s.played*100)+'%':'0%';
   $('#stat-played').textContent=s.played;
   $('#stat-pts').textContent=s.maxPts;
 }
-function resetStats(){if(confirm('Borrar todas las estadisticas?')){saveStats({wins:0,losses:0,bazas:0,bestStreak:0,played:0,maxPts:0});updateStats()}}
+function resetStats(){if(confirm('Borrar todas las estadisticas?')){saveStats({wins:0,losses:0,bazas:0,played:0,maxPts:0});updateStats()}}
 
 // ==================== GAME START ====================
 async function startGame(diff){
@@ -132,7 +131,6 @@ async function startGame(diff){
     playerHand:[],cpuHand:[],discard:[],
     playerScore:0,cpuScore:0,
     playerBazas:0,cpuBazas:0,
-    playerStreak:0,cpuStreak:0,
     bazaNum:0,playerFirst:true,
     playerPlay:[],cpuPlay:[],
     selected:new Set(),discardSelected:new Set(),discardNeeded:0,
@@ -842,21 +840,17 @@ async function resolveBaza(){
   const r=$('#play-result');
   if(result==='win'){
     const baseBonus=G._doubleBonusPlayer?2:1;
-    const streakBonus=G.playerStreak>=2?G.playerStreak*5:0; // +5,+10,+15... per streak
-    pScore+=baseBonus+streakBonus;
-    G.playerBazas++;G.playerStreak++;G.cpuStreak=0;
-    const streakTxt=streakBonus>0?` (+${streakBonus} racha)`:'';
-    r.textContent=`GANAS! ${pScore}-${cScore}${streakTxt}`;r.className='play-result win';
+    pScore+=baseBonus;
+    G.playerBazas++;
+    r.textContent=`GANAS! ${pScore}-${cScore}`;r.className='play-result win';
     vibrate([100,50,100]);
   }else if(result==='lose'){
     const baseBonus=G._doubleBonusCpu?2:1;
-    const streakBonus=G.cpuStreak>=2?G.cpuStreak*5:0;
-    cScore+=baseBonus+streakBonus;
-    G.cpuBazas++;G.cpuStreak++;G.playerStreak=0;
+    cScore+=baseBonus;
+    G.cpuBazas++;
     r.textContent=`PIERDES ${pScore}-${cScore}`;r.className='play-result lose';
     vibrate(200);
   }else{
-    G.playerStreak=0;G.cpuStreak=0;
     r.textContent=`EMPATE ${pScore}-${cScore}`;r.className='play-result draw';
   }
   r.classList.add('show');
@@ -939,7 +933,9 @@ function checkWin(){
 
 // ==================== MATCH FLOW ====================
 async function handleHalftime(){
-  await showEventMsg('\u{1F3DF}\uFE0F Descanso!',`${G.playerScore} - ${G.cpuScore}`);
+  await showEventMsg('\u{1F3DF}\uFE0F Descanso!',`${G.playerBazas} - ${G.cpuBazas}`);
+  // Cambios al descanso: discard up to 5, draw new
+  await performCambios();
   // Allow player to change formation
   await showHalftimeOverlay();
   // CPU may also change formation
@@ -948,6 +944,82 @@ async function handleHalftime(){
   G.period='second_half';
   saveGame();
   await nextBaza();
+}
+
+// === CAMBIOS AL DESCANSO ===
+async function performCambios(){
+  const MAX_CAMBIOS=5;
+  // CPU discards: drop worst cards (up to 5) and draw new ones
+  const cpuDiscardCount=Math.min(MAX_CAMBIOS,G.cpuHand.length,G.deck.length);
+  if(cpuDiscardCount>0){
+    const sorted=[...G.cpuHand].sort((a,b)=>(a.rating||0)-(b.rating||0));
+    const toDiscard=sorted.slice(0,cpuDiscardCount);
+    const discardIds=new Set(toDiscard.map(c=>c.id));
+    G.cpuHand=G.cpuHand.filter(c=>!discardIds.has(c.id));
+    G.discard.push(...toDiscard);
+    for(let i=0;i<cpuDiscardCount&&G.deck.length>0;i++){
+      G.cpuHand.push(G.deck.pop());
+    }
+  }
+  // Player chooses cards to discard
+  if(G.playerHand.length>0&&G.deck.length>0){
+    await showCambiosOverlay();
+  }
+}
+
+function showCambiosOverlay(){
+  return new Promise(resolve=>{
+    const o=$('#cambios-overlay');
+    const hand=$('#cambios-hand');
+    const MAX_CAMBIOS=Math.min(5,G.playerHand.length,G.deck.length);
+    window._cambiosSelected=new Set();
+    window._cambiosMax=MAX_CAMBIOS;
+    window._cambiosResolve=resolve;
+    $('#cambios-max').textContent=MAX_CAMBIOS;
+    $('#cambios-info').textContent='Seleccionadas: 0';
+    // Render player hand cards as selectable
+    hand.innerHTML=G.playerHand.map(c=>{
+      const html=cardHTML(c,false);
+      return html.replace('data-id=','onclick="toggleCambios('+c.id+')" data-id=');
+    }).join('');
+    // Show current hand preview (same cards, read-only)
+    $('#cambios-current-hand').innerHTML='';
+    o.classList.add('show');
+  });
+}
+
+function toggleCambios(id){
+  const sel=window._cambiosSelected;
+  if(sel.has(id))sel.delete(id);
+  else if(sel.size<window._cambiosMax)sel.add(id);
+  $$('#cambios-hand .card').forEach(el=>{
+    const cid=parseInt(el.dataset.id);
+    if(sel.has(cid))el.classList.add('selected');
+    else el.classList.remove('selected');
+  });
+  $('#cambios-info').textContent=`Seleccionadas: ${sel.size}`;
+}
+
+function confirmCambios(){
+  const sel=window._cambiosSelected;
+  if(!sel||sel.size===0)return;
+  const discarded=G.playerHand.filter(c=>sel.has(c.id));
+  G.playerHand=G.playerHand.filter(c=>!sel.has(c.id));
+  G.discard.push(...discarded);
+  const drawCount=Math.min(discarded.length,G.deck.length);
+  for(let i=0;i<drawCount;i++){
+    G.playerHand.push(G.deck.pop());
+  }
+  window._cambiosSelected=null;
+  $('#cambios-overlay').classList.remove('show');
+  renderGame();
+  if(window._cambiosResolve){window._cambiosResolve();window._cambiosResolve=null}
+}
+
+function skipCambios(){
+  window._cambiosSelected=null;
+  $('#cambios-overlay').classList.remove('show');
+  if(window._cambiosResolve){window._cambiosResolve();window._cambiosResolve=null}
 }
 
 function showHalftimeOverlay(){
@@ -974,6 +1046,8 @@ function showHalftimeOverlay(){
 
 async function handleExtraTime(){
   await showEventMsg('\u{231B} Prorroga!','3 bazas extra');
+  // Cambios al descanso before extra time
+  await performCambios();
   G.period='extra_time';
   saveGame();
   await nextBaza();
@@ -981,6 +1055,8 @@ async function handleExtraTime(){
 
 async function handlePenalties(){
   await showEventMsg('\u{26BD} Penaltis!','5 rondas · 1 carta por ronda');
+  // Cambios al descanso before penalties
+  await performCambios();
   G.period='penalties';
   G.penaltyRound=0;G.penaltyPlayer=0;G.penaltyCpu=0;
   for(let round=1;round<=5;round++){
@@ -1243,7 +1319,7 @@ function endGame(winner){
   localStorage.removeItem('sc_game');
   const stats=getStats();
   stats.played++;
-  if(winner==='player'){stats.wins++;stats.bazas+=G.playerBazas;stats.bestStreak=Math.max(stats.bestStreak,G.playerStreak);stats.maxPts=Math.max(stats.maxPts,G.playerScore)}
+  if(winner==='player'){stats.wins++;stats.bazas+=G.playerBazas;stats.maxPts=Math.max(stats.maxPts,G.playerScore)}
   else if(winner==='cpu'){stats.losses++;stats.bazas+=G.playerBazas}
   saveStats(stats);
   const title=$('#end-title');
@@ -1255,7 +1331,6 @@ function endGame(winner){
   const cpuP=G.cpuPersonality?CPU_PERSONALITIES[G.cpuPersonality]:null;
   statsDiv.innerHTML=`
     <div class="end-stat"><span>Resultado</span><span>${G.playerBazas} - ${G.cpuBazas}</span></div>
-    <div class="end-stat"><span>Mejor racha</span><span>${Math.max(G.playerStreak,stats.bestStreak)}</span></div>
     <div class="end-stat"><span>Bazas totales</span><span>${G.bazaNum}</span></div>
     <div class="end-stat"><span>Resultado por</span><span>${reason}</span></div>
     ${G.playerFormation?`<div class="end-stat"><span>Tu formacion</span><span>${G.playerFormation.name}</span></div>`:''}
@@ -1377,8 +1452,7 @@ function renderScoreboard(){
   }else{
     $('#sc-bazas').textContent=`Min ${minute}' (Ronda ${bazaInPeriod}/${periodMax})`;
   }
-  let streak=G.playerStreak>1?`Racha: ${G.playerStreak}`:G.cpuStreak>1?`Racha CPU: ${G.cpuStreak}`:'';
-  $('#sc-streak').textContent=streak;
+  $('#sc-streak').textContent='';
   $('#sc-deck').textContent=`Mazo: ${G.deck.length}`;
   renderMatchInfo();
 }
