@@ -1291,8 +1291,16 @@ function renderScoreboard(){
   const periodLabel=G.period==='first_half'?'1er Tiempo':G.period==='second_half'?'2do Tiempo':G.period==='extra_time'?'Prorroga':'Penaltis';
   const bazaInPeriod=G.period==='first_half'?G.bazaNum:G.period==='second_half'?G.bazaNum-10:G.period==='extra_time'?G.bazaNum-20:G.penaltyRound;
   const periodMax=G.period==='extra_time'?3:G.period==='penalties'?5:10;
+  let minute=0;
+  if(G.period==='first_half')minute=Math.round(bazaInPeriod*45/10);
+  else if(G.period==='second_half')minute=45+Math.round(bazaInPeriod*45/10);
+  else if(G.period==='extra_time')minute=90+Math.round(bazaInPeriod*30/3);
   $('#sc-period').textContent=periodLabel;
-  $('#sc-bazas').textContent=`Baza ${bazaInPeriod}/${periodMax}`;
+  if(G.period==='penalties'){
+    $('#sc-bazas').textContent=`Penalti ${bazaInPeriod}/${periodMax}`;
+  }else{
+    $('#sc-bazas').textContent=`Min ${minute}' (Ronda ${bazaInPeriod}/${periodMax})`;
+  }
   let streak=G.playerStreak>1?`Racha: ${G.playerStreak}`:G.cpuStreak>1?`Racha CPU: ${G.cpuStreak}`:'';
   if(G.epicMode)streak+=` \u{1F525} Epico: ${G.epicMode.who==='player'?'Tu':'CPU'} (${G.epicMode.remaining})`;
   $('#sc-streak').textContent=streak;
