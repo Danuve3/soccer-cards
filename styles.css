@@ -285,7 +285,7 @@ opacity:0;pointer-events:none;transition:opacity .3s;padding:16px;
 .draft-section{
   display:flex;flex-direction:column;align-items:center;width:100%;
 }
-.draft-market{gap:8px}
+.draft-market{gap:8px;margin-bottom:16px}
 .draft-title{font-family:var(--font-d);font-size:26px;color:var(--gold)}
 .draft-sub{font-size:14px;color:var(--text2)}
 .draft-hand{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;max-width:400px}
