@@ -1,0 +1,24 @@
+{
+  "name": "Soccer Cards · La Liga 25/26",
+  "short_name": "Soccer Cards",
+  "description": "Juego de cartas de futbol con los 20 equipos de La Liga",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B1120",
+  "theme_color": "#0B1120",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

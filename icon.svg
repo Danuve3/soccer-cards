@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0B1120"/>
+  <rect x="80" y="60" width="200" height="280" rx="18" fill="#1a1f36" stroke="#D4AF37" stroke-width="6"/>
+  <rect x="232" y="172" width="200" height="280" rx="18" fill="#1a1f36" stroke="#D4AF37" stroke-width="6"/>
+  <circle cx="180" cy="200" r="55" fill="none" stroke="#fff" stroke-width="5" opacity=".9"/>
+  <path d="M180 145l10 17h-20zM180 255l10-17h-20zM125 200l17-10v20zM235 200l-17-10v20zM141 161l17 10-10 17zM219 239l-17-10 10-17zM219 161l-10 17-17-10zM141 239l10-17 17 10z" fill="#fff" opacity=".9"/>
+  <circle cx="180" cy="200" r="18" fill="#fff" opacity=".9"/>
+  <text x="332" y="340" font-family="sans-serif" font-weight="700" font-size="80" fill="#D4AF37" text-anchor="middle">SC</text>
+  <text x="256" y="460" font-family="sans-serif" font-weight="700" font-size="36" fill="#D4AF37" text-anchor="middle" opacity=".6">LA LIGA</text>
+</svg>
