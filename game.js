@@ -19,7 +19,6 @@ let G={
   animating:false,
   // New mechanics
   playerFormation:null,cpuFormation:null,
-  epicMode:null, // {who:'player'|'cpu', remaining:3}
   cpuPersonality:null,
   // Turn-based baza
   bazaTeam:null,cpuBazaTeam:null,
@@ -139,7 +138,7 @@ async function startGame(diff){
     selected:new Set(),discardSelected:new Set(),discardNeeded:0,
     animating:false,
     playerFormation:null,cpuFormation:null,
-    epicMode:null,cpuPersonality:null,
+    cpuPersonality:null,
     bazaTeam:null,cpuBazaTeam:null,
     cpuPlan:[],cpuPlanIndex:0,
     evtPP:0,evtPC:0,evtCP:0,evtCC:0,
@@ -176,7 +175,6 @@ async function continueGame(){
     if(!saved)return;
     G=saved;
     G.selected=new Set();G.discardSelected=new Set();G.animating=false;
-    G.epicMode=G.epicMode||null;
     G.playerFormation=G.playerFormation||null;
     G.cpuFormation=G.cpuFormation||null;
     G.cpuPersonality=G.cpuPersonality||null;
@@ -237,7 +235,6 @@ async function nextBaza(){
   G.eventEffects={};
   clearPlayZone();
   renderGame();
-  checkEpicMode();
   if(G.playerFormation&&G.playerFormation.id==='352'&&G.cpuHand.length>0){
     const peekCard=G.cpuHand[Math.floor(Math.random()*G.cpuHand.length)];
     await showEventMsg('\u{1F441}\uFE0F Espionaje!',`Rival tiene: ${peekCard.name}${peekCard.rating?' ('+peekCard.rating+')':''}`);
@@ -400,29 +397,6 @@ async function applyTeamAbility(abilityInfo,who,myCards,rivalCards,myScore,rival
 }
 
 
-// === EPIC MODE (COMEBACK MECHANIC) ===
-function checkEpicMode(){
-  if(G.epicMode&&G.epicMode.remaining>0){
-    G.epicMode.remaining--;
-    if(G.epicMode.remaining<=0)G.epicMode=null;
-    return;
-  }
-  const scoreDiff=G.playerScore-G.cpuScore;
-  const bazaDiff=G.playerBazas-G.cpuBazas;
-  if(scoreDiff<=-200||bazaDiff<=-4){
-    G.epicMode={who:'player',remaining:3};
-  }else if(scoreDiff>=200||bazaDiff>=4){
-    G.epicMode={who:'cpu',remaining:3};
-  }else{
-    G.epicMode=null;
-  }
-}
-
-function getEpicBonus(who,cards){
-  if(!G.epicMode||G.epicMode.who!==who)return 0;
-  const playerCount=cards.filter(c=>c.type==='player'||c.type==='legend').length;
-  return playerCount*10; // +10 per player card
-}
 
 function clearPlayZone(){
   $('#pzc-player').innerHTML='';
@@ -558,10 +532,9 @@ async function handlePreEventsSingle(card,who){
     }
   }
   if(card.type==='event_yellow'){
-    const epicMult=(G.epicMode&&G.epicMode.who===who)?2:1;
     const defForm=who==='player'?G.cpuFormation:G.playerFormation;
     const defense=getFormationEventReduction(defForm);
-    const penalty=Math.round(15*epicMult*defense);
+    const penalty=Math.round(15*defense);
     if(who==='player'){G.evtCP-=penalty;G.eventEffects[card.id]={who,onP:0,onC:-penalty}}
     else{G.evtPC-=penalty;G.eventEffects[card.id]={who,onP:-penalty,onC:0}}
     await showEventMsg('\u{1F7E1} Tarjeta amarilla!',`-${penalty} pts al rival`);
@@ -569,10 +542,9 @@ async function handlePreEventsSingle(card,who){
   if(card.type==='event_red'){
     const rivalPlay=who==='player'?G.cpuPlay:G.playerPlay;
     const rivalScore=calcScore(rivalPlay);
-    const epicMult=(G.epicMode&&G.epicMode.who===who)?2:1;
     const defForm=who==='player'?G.cpuFormation:G.playerFormation;
     const defense=getFormationEventReduction(defForm);
-    const penalty=Math.min(Math.floor(rivalScore*0.3*epicMult*defense),Math.round(40*epicMult*defense));
+    const penalty=Math.min(Math.floor(rivalScore*0.3*defense),Math.round(40*defense));
     if(who==='player'){G.evtCP-=penalty;G.eventEffects[card.id]={who,onP:0,onC:-penalty}}
     else{G.evtPC-=penalty;G.eventEffects[card.id]={who,onP:-penalty,onC:0}}
     await showEventMsg('\u{1F534} Tarjeta roja!',`-${penalty} pts al rival`);
@@ -580,8 +552,7 @@ async function handlePreEventsSingle(card,who){
   if(card.type==='event_talk'){
     const myPlay=who==='player'?G.playerPlay:G.cpuPlay;
     const pCount=myPlay.filter(c=>c.type==='player'||c.type==='legend').length;
-    const epicMult=(G.epicMode&&G.epicMode.who===who)?2:1;
-    const bonus=pCount*5*epicMult;
+    const bonus=pCount*5;
     if(who==='player'){G.evtPP+=bonus;G.eventEffects[card.id]={who,onP:bonus,onC:0}}
     else{G.evtCC+=bonus;G.eventEffects[card.id]={who,onP:0,onC:bonus}}
     await showEventMsg('\u{1F4AC} Charla del descanso!',`+${bonus} pts (${pCount} jugadores)`);
@@ -796,11 +767,6 @@ async function showEventMsg(text,sub){
 async function resolveBaza(){
   let pScore=calcScore(G.playerPlay);
   let cScore=calcScore(G.cpuPlay);
-  // Apply Epic Mode bonus
-  const pEpicBonus=getEpicBonus('player',G.playerPlay);
-  const cEpicBonus=getEpicBonus('cpu',G.cpuPlay);
-  if(pEpicBonus>0){pScore+=pEpicBonus;await showEventMsg('\u{1F525} Modo Epico!',`+${pEpicBonus} pts de comeback`)}
-  if(cEpicBonus>0){cScore+=cEpicBonus;await showEventMsg('\u{1F525} Modo Epico CPU!',`+${cEpicBonus} pts de comeback`)}
   // Apply team abilities
   const pAbility=getTeamAbility(G.playerPlay);
   const cAbility=getTeamAbility(G.cpuPlay);
@@ -980,7 +946,6 @@ async function handleHalftime(){
   G.cpuFormation=cpuPickFormation();
   await showEventMsg(`\u{1F916} CPU cambia a ${G.cpuFormation.name}`,G.cpuFormation.desc);
   G.period='second_half';
-  G.epicMode=null;
   saveGame();
   await nextBaza();
 }
@@ -1010,7 +975,6 @@ function showHalftimeOverlay(){
 async function handleExtraTime(){
   await showEventMsg('\u{231B} Prorroga!','3 bazas extra');
   G.period='extra_time';
-  G.epicMode=null;
   saveGame();
   await nextBaza();
 }
@@ -1414,7 +1378,6 @@ function renderScoreboard(){
     $('#sc-bazas').textContent=`Min ${minute}' (Ronda ${bazaInPeriod}/${periodMax})`;
   }
   let streak=G.playerStreak>1?`Racha: ${G.playerStreak}`:G.cpuStreak>1?`Racha CPU: ${G.cpuStreak}`:'';
-  if(G.epicMode)streak+=` \u{1F525} Epico: ${G.epicMode.who==='player'?'Tu':'CPU'} (${G.epicMode.remaining})`;
   $('#sc-streak').textContent=streak;
   $('#sc-deck').textContent=`Mazo: ${G.deck.length}`;
   renderMatchInfo();
