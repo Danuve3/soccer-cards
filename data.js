@@ -69,7 +69,32 @@ const TEAMS=[
 const EVENT_TYPES=[
 {t:"swap",n:"Cambio de campo",d:"Intercambia manos con el rival",i:"\u{1F504}"},
 {t:"steal",n:"Robo de balon",d:"Roba 1 carta aleatoria del rival",i:"\u{1F590}"},
-{t:"yellow",n:"Tarjeta amarilla",d:"-5 puntos al rival en esta baza",i:"\u{1F7E8}"},
-{t:"red",n:"Tarjeta roja",d:"Puntuacion rival dividida entre 2",i:"\u{1F7E5}"},
-{t:"talk",n:"Charla del descanso",d:"+1 por cada jugador que juegues",i:"\u{1F4AC}"}
+{t:"yellow",n:"Tarjeta amarilla",d:"-15 puntos al rival en esta baza",i:"\u{1F7E8}"},
+{t:"red",n:"Tarjeta roja",d:"-30% puntuacion rival (max -40)",i:"\u{1F7E5}"},
+{t:"talk",n:"Charla del descanso",d:"+5 por cada jugador que juegues",i:"\u{1F4AC}"},
+{t:"var",n:"VAR",d:"Anula el ultimo evento jugado por el rival",i:"\u{1F4FA}"}
+];
+
+// Team passive abilities (triggered when playing 3+ cards of that team)
+const TEAM_ABILITIES=[
+{name:"Galacticos",desc:"+15 pts extra al combo",effect:"bonus",value:15},
+{name:"Tiki-Taka",desc:"Roba 1 carta extra del mazo",effect:"draw",value:1},
+{name:"Cholismo",desc:"Rival no puede usar eventos esta baza",effect:"block_events",value:0},
+{name:"Garra",desc:"+5 pts por cada jugador en el combo",effect:"per_player",value:5},
+{name:"Ingenio",desc:"Recupera 1 carta del descarte",effect:"recover",value:1},
+{name:"Txuri-urdin",desc:"+10 pts si juegas leyenda en combo",effect:"legend_bonus",value:10},
+{name:"Submarino",desc:"Protege del efecto del entrenador rival",effect:"shield_coach",value:0},
+{name:"Resiliencia",desc:"+20 pts si vas perdiendo en score",effect:"underdog",value:20},
+{name:"Nervion",desc:"-10 pts al rival por cada evento que juegues",effect:"event_damage",value:10},
+{name:"Celeste",desc:"+8 pts por carta de evento en tu jugada",effect:"event_synergy",value:8},
+{name:"Rojillo",desc:"+3 pts por cada carta jugada (incluye eventos)",effect:"per_card",value:3},
+{name:"Bermellones",desc:"Duplica el bonus de victoria (+2 en vez de +1)",effect:"double_bonus",value:0},
+{name:"Rayo",desc:"+12 pts si juegas exactamente 3 cartas",effect:"exact_three",value:12},
+{name:"Azulon",desc:"Entrenador elimina las 2 mejores cartas rivales",effect:"super_coach",value:0},
+{name:"Babazorro",desc:"+6 pts por carta de jugador con rating <78",effect:"underrated",value:6},
+{name:"Pericos",desc:"Escudo protege de eventos rivales ademas de x2",effect:"shield_protect",value:0},
+{name:"Pucela",desc:"+25 pts si solo juegas 1 jugador (apuesta solitaria)",effect:"solo",value:25},
+{name:"Canarios",desc:"Ves 1 carta de la mano rival antes de jugar",effect:"scout",value:0},
+{name:"Pepineros",desc:"+10 pts si el rival jugo mas cartas que tu",effect:"counter",value:10},
+{name:"Che",desc:"+8 pts por cada tipo distinto de carta en tu jugada",effect:"variety",value:8}
 ];

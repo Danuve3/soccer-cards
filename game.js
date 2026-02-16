@@ -16,7 +16,12 @@ let G={
   selected:new Set(),
   discardSelected:new Set(),
   discardNeeded:0,
-  animating:false
+  animating:false,
+  // New mechanics
+  playerBet:1,cpuBet:1,
+  playerFormation:null,cpuFormation:null,
+  epicMode:null, // {who:'player'|'cpu', remaining:3}
+  cpuPersonality:null
 };
 
 // ==================== UTILS ====================
@@ -124,14 +129,28 @@ async function startGame(diff){
     bazaNum:0,playerFirst:true,
     playerPlay:[],cpuPlay:[],
     selected:new Set(),discardSelected:new Set(),discardNeeded:0,
-    animating:false
+    animating:false,
+    playerBet:1,cpuBet:1,
+    playerFormation:null,cpuFormation:null,
+    epicMode:null,cpuPersonality:null
   };
-  // Deal 6 each
-  for(let i=0;i<6;i++){
-    G.playerHand.push(G.deck.pop());
-    G.cpuHand.push(G.deck.pop());
-  }
+  // Pick CPU personality first (needed for formation choice)
+  G.cpuPersonality=pickCpuPersonality(diff);
   showScreen('game');
+  renderGame();
+  // Formation selection
+  await showFormationOverlay();
+  G.cpuFormation=cpuPickFormation();
+  const pInfo=CPU_PERSONALITIES[G.cpuPersonality];
+  await showEventMsg(`\u{1F3DF}\uFE0F Formacion: ${G.playerFormation.name}`,G.playerFormation.desc);
+  await showEventMsg(`\u{1F916} CPU: ${G.cpuFormation.name}`,`${pInfo.icon} ${pInfo.name} - ${pInfo.desc}`);
+  // Deal cards (4-4-2 gets 7)
+  const playerCards=G.playerFormation.id==='442'?7:6;
+  const cpuCards=G.cpuFormation.id==='442'?7:6;
+  for(let i=0;i<Math.max(playerCards,cpuCards);i++){
+    if(i<playerCards&&G.deck.length>0)G.playerHand.push(G.deck.pop());
+    if(i<cpuCards&&G.deck.length>0)G.cpuHand.push(G.deck.pop());
+  }
   renderGame();
   await wait(500);
   await coinToss();
@@ -144,6 +163,11 @@ async function continueGame(){
     if(!saved)return;
     G=saved;
     G.selected=new Set();G.discardSelected=new Set();G.animating=false;
+    G.epicMode=G.epicMode||null;
+    G.playerFormation=G.playerFormation||null;
+    G.cpuFormation=G.cpuFormation||null;
+    G.cpuPersonality=G.cpuPersonality||null;
+    G.playerBet=G.playerBet||1;G.cpuBet=G.cpuBet||1;
     showScreen('game');
     renderGame();
   }catch(e){console.error(e)}
@@ -179,9 +203,22 @@ async function nextBaza(){
   G.bazaNum++;
   G.playerPlay=[];G.cpuPlay=[];
   G.selected=new Set();
-  G.turnIndicator=G.playerFirst?'player':'cpu';
+  G.playerBet=1;G.cpuBet=1;
   clearPlayZone();
   renderGame();
+  // Check epic mode
+  checkEpicMode();
+  // Formation 3-5-2: peek at one rival card
+  if(G.playerFormation&&G.playerFormation.id==='352'&&G.cpuHand.length>0){
+    const peekCard=G.cpuHand[Math.floor(Math.random()*G.cpuHand.length)];
+    await showEventMsg('\u{1F441}\uFE0F Espionaje!',`Rival tiene: ${peekCard.name}${peekCard.rating?' ('+peekCard.rating+')':''}`);
+  }
+  // Bet phase
+  G.cpuBet=cpuBet();
+  await showBetOverlay();
+  renderScoreboard();
+  G.turnIndicator=G.playerFirst?'player':'cpu';
+  renderScoreboard();
   if(!G.playerFirst){
     G.animating=true;
     await wait(800);
@@ -194,6 +231,226 @@ async function nextBaza(){
     renderScoreboard();
     renderHand();
   }
+}
+
+// === FORMATIONS ===
+const FORMATIONS=[
+  {id:'433',name:'4-3-3',label:'Ataque',desc:'+15% puntuacion en combos de 3+ jugadores',icon:'\u2694\uFE0F',color:'var(--red)'},
+  {id:'442',name:'4-4-2',label:'Equilibrio',desc:'Empiezas con 7 cartas en vez de 6',icon:'\u2696\uFE0F',color:'var(--gold)'},
+  {id:'541',name:'5-4-1',label:'Defensa',desc:'Eventos rivales tienen 50% menos efecto',icon:'\u{1F6E1}\uFE0F',color:'var(--blue)'},
+  {id:'352',name:'3-5-2',label:'Control',desc:'Ves 1 carta de la mano rival cada baza',icon:'\u{1F441}\uFE0F',color:'var(--purple)'}
+];
+
+function showFormationOverlay(){
+  return new Promise(resolve=>{
+    const o=$('#formation-overlay');
+    o.classList.add('show');
+    $$('.formation-card').forEach(card=>{
+      card.onclick=()=>{
+        const fid=card.dataset.formation;
+        const formation=FORMATIONS.find(f=>f.id===fid);
+        G.playerFormation=formation;
+        o.classList.remove('show');
+        resolve(formation);
+      };
+    });
+  });
+}
+
+function cpuPickFormation(){
+  const diff=G.difficulty;
+  if(diff==='easy')return FORMATIONS[1]; // Balanced
+  if(diff==='normal')return FORMATIONS[Math.floor(Math.random()*FORMATIONS.length)];
+  // Hard: pick based on personality
+  const p=G.cpuPersonality;
+  if(p==='aggressive')return FORMATIONS[0]; // 4-3-3
+  if(p==='conservative')return FORMATIONS[2]; // 5-4-1
+  if(p==='tactical')return FORMATIONS[3]; // 3-5-2
+  return FORMATIONS[0]; // Default: attack
+}
+
+function applyFormationToScore(score,cards,formation){
+  if(!formation)return score;
+  if(formation.id==='433'){
+    const players=cards.filter(c=>c.type==='player'||c.type==='legend');
+    if(players.length>=3)score=Math.round(score*1.15);
+  }
+  return score;
+}
+
+function getFormationEventReduction(formation){
+  if(!formation)return 1;
+  if(formation.id==='541')return 0.5;
+  return 1;
+}
+
+// === CPU PERSONALITIES ===
+const CPU_PERSONALITIES={
+  conservative:{name:'El Conservador',desc:'Acumula cartas buenas, juega sueltas al inicio',icon:'\u{1F9D0}'},
+  aggressive:{name:'El Agresivo',desc:'Siempre juega el combo mas grande posible',icon:'\u{1F525}'},
+  trickster:{name:'El Tramposo',desc:'Prioriza eventos y cartas especiales',icon:'\u{1F3AD}'},
+  tactical:{name:'El Tactico',desc:'Analiza y se adapta a tu estilo',icon:'\u{1F9E0}'}
+};
+
+function pickCpuPersonality(diff){
+  if(diff==='easy')return 'conservative';
+  if(diff==='normal'){
+    const opts=['conservative','aggressive','trickster','tactical'];
+    return opts[Math.floor(Math.random()*opts.length)];
+  }
+  // Hard: weighted towards tactical and aggressive
+  const r=Math.random();
+  if(r<0.35)return 'tactical';
+  if(r<0.65)return 'aggressive';
+  if(r<0.85)return 'trickster';
+  return 'conservative';
+}
+
+// === TEAM ABILITIES ===
+async function applyTeamAbility(abilityInfo,who,myCards,rivalCards,myScore,rivalScore){
+  const a=abilityInfo.ability;
+  const tName=abilityInfo.teamName;
+  const label=who==='player'?'':'CPU: ';
+  await showEventMsg(`\u{26A1} ${label}${a.name}!`,`${tName}: ${a.desc}`);
+  const players=myCards.filter(c=>c.type==='player'||c.type==='legend');
+  const events=myCards.filter(c=>c.type.startsWith('event_'));
+  switch(a.effect){
+    case 'bonus': myScore+=a.value;break;
+    case 'draw':
+      if(G.deck.length>0){
+        const drawn=G.deck.pop();
+        if(who==='player')G.playerHand.push(drawn);else G.cpuHand.push(drawn);
+      }
+      break;
+    case 'block_events':
+      // Handled in event resolution - mark flag
+      if(who==='player')G._blockCpuEvents=true;else G._blockPlayerEvents=true;
+      break;
+    case 'per_player': myScore+=players.length*a.value;break;
+    case 'recover':
+      if(G.discard.length>0){
+        const best=G.discard.filter(c=>c.rating>0).sort((x,y)=>y.rating-x.rating)[0];
+        if(best){
+          G.discard=G.discard.filter(c=>c.id!==best.id);
+          if(who==='player')G.playerHand.push(best);else G.cpuHand.push(best);
+        }
+      }
+      break;
+    case 'legend_bonus':
+      if(myCards.some(c=>c.type==='legend'))myScore+=a.value;
+      break;
+    case 'shield_coach':
+      if(who==='player')G._shieldCoachPlayer=true;else G._shieldCoachCpu=true;
+      break;
+    case 'underdog':
+      const myTotal=who==='player'?G.playerScore:G.cpuScore;
+      const rivalTotal=who==='player'?G.cpuScore:G.playerScore;
+      if(myTotal<rivalTotal)myScore+=a.value;
+      break;
+    case 'event_damage': rivalScore-=events.length*a.value;break;
+    case 'event_synergy': myScore+=events.length*a.value;break;
+    case 'per_card': myScore+=myCards.length*a.value;break;
+    case 'double_bonus':
+      if(who==='player')G._doubleBonusPlayer=true;else G._doubleBonusCpu=true;
+      break;
+    case 'exact_three':
+      if(myCards.length===3)myScore+=a.value;
+      break;
+    case 'super_coach':
+      if(who==='player')G._superCoachPlayer=true;else G._superCoachCpu=true;
+      break;
+    case 'underrated':
+      myScore+=players.filter(c=>(c.rating||0)<78).length*a.value;
+      break;
+    case 'shield_protect':
+      if(myCards.some(c=>c.type==='shield')){
+        if(who==='player')G._blockCpuEvents=true;else G._blockPlayerEvents=true;
+      }
+      break;
+    case 'solo':
+      if(players.length===1)myScore+=a.value;
+      break;
+    case 'scout':
+      // Show one rival card (visual only, doesn't affect score)
+      break;
+    case 'counter':
+      if(rivalCards.length>myCards.length)myScore+=a.value;
+      break;
+    case 'variety':{
+      const types=new Set(myCards.map(c=>c.type.startsWith('event_')?'event':c.type));
+      myScore+=types.size*a.value;
+      break;
+    }
+  }
+  rivalScore=Math.max(0,rivalScore);
+  return{myScore,rivalScore};
+}
+
+// === BET SYSTEM ===
+function showBetOverlay(){
+  return new Promise(resolve=>{
+    const o=$('#bet-overlay');
+    o.classList.add('show');
+    $$('.bet-btn').forEach(btn=>{
+      btn.onclick=()=>{
+        const val=parseInt(btn.dataset.bet);
+        G.playerBet=val;
+        o.classList.remove('show');
+        resolve(val);
+      };
+    });
+  });
+}
+
+// === EPIC MODE (COMEBACK MECHANIC) ===
+function checkEpicMode(){
+  if(G.epicMode&&G.epicMode.remaining>0){
+    G.epicMode.remaining--;
+    if(G.epicMode.remaining<=0)G.epicMode=null;
+    return;
+  }
+  const scoreDiff=G.playerScore-G.cpuScore;
+  const bazaDiff=G.playerBazas-G.cpuBazas;
+  if(scoreDiff<=-200||bazaDiff<=-4){
+    G.epicMode={who:'player',remaining:3};
+  }else if(scoreDiff>=200||bazaDiff>=4){
+    G.epicMode={who:'cpu',remaining:3};
+  }else{
+    G.epicMode=null;
+  }
+}
+
+function getEpicBonus(who,cards){
+  if(!G.epicMode||G.epicMode.who!==who)return 0;
+  const playerCount=cards.filter(c=>c.type==='player'||c.type==='legend').length;
+  return playerCount*10; // +10 per player card
+}
+
+function cpuBet(){
+  const diff=G.difficulty;
+  const hand=G.cpuHand;
+  // Evaluate hand strength
+  const maxRating=Math.max(...hand.map(c=>c.rating||0));
+  const totalRating=hand.filter(c=>c.rating>0).reduce((s,c)=>s+c.rating,0);
+  const hasShield=hand.some(c=>c.type==='shield');
+  const personality=G.cpuPersonality;
+
+  if(diff==='easy')return 1;
+  if(diff==='normal'){
+    if(totalRating>300&&hasShield)return 2;
+    return 1;
+  }
+  // Hard: smarter betting based on hand quality and personality
+  if(personality==='aggressive'){
+    if(totalRating>250)return 3;
+    if(totalRating>150)return 2;
+    return 1;
+  }
+  if(personality==='conservative')return 1;
+  // Default hard
+  if(totalRating>350&&hasShield)return 3;
+  if(totalRating>250||maxRating>=90)return 2;
+  return 1;
 }
 
 function clearPlayZone(){
@@ -264,7 +521,7 @@ async function playSelected(){
     G.turnIndicator='cpu';
     renderScoreboard();
     await wait(800);
-    cpuTurn();
+    cpuTurn(G.playerPlay); // CPU sees player's cards and can respond
     renderCpuPlay();
     renderRivalHand();
     await wait(600);
@@ -274,10 +531,11 @@ async function playSelected(){
 }
 
 // ==================== CPU AI ====================
-function cpuTurn(){
+function cpuTurn(rivalPlay){
   const hand=G.cpuHand;
   if(hand.length===0)return;
   const diff=G.difficulty;
+  const personality=G.cpuPersonality||'aggressive';
   let play=[];
   // Group by team
   const groups={};
@@ -288,67 +546,148 @@ function cpuTurn(){
     }
   });
   const events=hand.filter(c=>c.type.startsWith('event_'));
+  const rivalScore=rivalPlay?calcScore(rivalPlay):0;
+  const rivalHasEvents=rivalPlay?rivalPlay.some(c=>c.type.startsWith('event_')):false;
 
-  if(diff==='easy'){
-    // Play single random non-shield/coach card
-    const playable=hand.filter(c=>c.type==='player'||c.type==='legend');
-    if(playable.length>0){
-      play=[playable[Math.floor(Math.random()*playable.length)]];
-    }else{
-      play=[hand[0]];
-    }
-  }else if(diff==='normal'){
-    // Try combo of 2+ same-team players
-    let bestCombo=null,bestVal=0;
-    for(const[ti,cards] of Object.entries(groups)){
-      const pl=cards.filter(c=>c.type==='player'||c.type==='legend');
-      if(pl.length>=2){
-        const val=pl.reduce((s,c)=>s+c.rating,0);
-        const shield=cards.find(c=>c.type==='shield');
-        const total=shield?val*2:val;
-        if(total>bestVal){bestVal=total;bestCombo=[...pl];if(shield)bestCombo.push(shield)}
-      }
-    }
-    if(bestCombo){play=bestCombo}
-    else{
-      const ranked=hand.filter(c=>c.rating>0).sort((a,b)=>b.rating-a.rating);
-      play=ranked.length>0?[ranked[0]]:[hand[0]];
-    }
-    // Maybe add a yellow/red event
-    if(Math.random()>0.5){
-      const ev=events.find(c=>c.type==='event_yellow'||c.type==='event_red');
-      if(ev)play.push(ev);
-    }
-  }else{
-    // Hard: maximize score, consider opponent
-    let bestPlay=null,bestScore=0;
+  // Helper: find best combo across all teams
+  function findBestCombo(maxSize){
+    let best=null,bestVal=0;
     for(const[ti,cards] of Object.entries(groups)){
       const pl=cards.filter(c=>c.type==='player'||c.type==='legend');
       const shield=cards.find(c=>c.type==='shield');
       const coach=cards.find(c=>c.type==='coach');
-      for(let sz=Math.min(pl.length,4);sz>=1;sz--){
-        const sorted=pl.sort((a,b)=>b.rating-a.rating);
+      for(let sz=Math.min(pl.length,maxSize);sz>=1;sz--){
+        const sorted=[...pl].sort((a,b)=>b.rating-a.rating);
         const combo=sorted.slice(0,sz);
         let val=combo.reduce((s,c)=>s+c.rating,0);
         const thisPlay=[...combo];
         if(shield&&combo.length>=2){val*=2;thisPlay.push(shield)}
-        if(coach){thisPlay.push(coach)}
-        if(val>bestScore){bestScore=val;bestPlay=thisPlay}
+        if(coach)thisPlay.push(coach);
+        if(val>bestVal){bestVal=val;best=thisPlay}
       }
     }
-    // Consider single high card
-    const singles=hand.filter(c=>c.rating>0).sort((a,b)=>b.rating-a.rating);
-    if(singles.length>0&&singles[0].rating>bestScore){
-      bestScore=singles[0].rating;bestPlay=[singles[0]];
+    return{play:best,score:bestVal};
+  }
+
+  if(personality==='conservative'){
+    // Save big combos, play small cards early
+    if(G.bazaNum<=3){
+      // Early game: play lowest single card
+      const ranked=hand.filter(c=>c.rating>0).sort((a,b)=>a.rating-b.rating);
+      play=ranked.length>0?[ranked[0]]:[hand[0]];
+    }else{
+      // Mid/late game: unleash combos
+      const combo=findBestCombo(4);
+      if(combo.play)play=combo.play;
+      else{
+        const ranked=hand.filter(c=>c.rating>0).sort((a,b)=>b.rating-a.rating);
+        play=ranked.length>0?[ranked[0]]:[hand[0]];
+      }
     }
-    play=bestPlay||[hand[0]];
-    // Add scoring events
-    const yellow=events.find(c=>c.type==='event_yellow');
+    // Conservative: only use events defensively
+    if(rivalPlay&&rivalHasEvents){
+      const varCard=events.find(c=>c.type==='event_var');
+      if(varCard&&!play.includes(varCard))play.push(varCard);
+    }
+  }else if(personality==='aggressive'){
+    // Always play biggest combo possible
+    const combo=findBestCombo(5);
+    if(combo.play)play=combo.play;
+    else{
+      const ranked=hand.filter(c=>c.rating>0).sort((a,b)=>b.rating-a.rating);
+      play=ranked.length>0?[ranked[0]]:[hand[0]];
+    }
+    // Always add offensive events
     const red=events.find(c=>c.type==='event_red');
+    const yellow=events.find(c=>c.type==='event_yellow');
     const talk=events.find(c=>c.type==='event_talk');
     if(red&&!play.includes(red))play.push(red);
-    else if(yellow&&!play.includes(yellow))play.push(yellow);
+    if(yellow&&!play.includes(yellow))play.push(yellow);
     if(talk&&play.filter(c=>c.type==='player'||c.type==='legend').length>=2&&!play.includes(talk))play.push(talk);
+  }else if(personality==='trickster'){
+    // Prioritize events and special cards
+    // Play a small combo as base, then stack events
+    const ranked=hand.filter(c=>c.rating>0).sort((a,b)=>b.rating-a.rating);
+    play=ranked.length>0?[ranked[0]]:[hand[0]];
+    // Add ALL available events
+    events.forEach(e=>{if(!play.includes(e))play.push(e)});
+    // Try to use swap/steal if going first
+    if(!rivalPlay){
+      const swap=events.find(c=>c.type==='event_swap');
+      const steal=events.find(c=>c.type==='event_steal');
+      if(swap&&!play.includes(swap))play.push(swap);
+      if(steal&&!play.includes(steal))play.push(steal);
+    }
+  }else if(personality==='tactical'){
+    // Adapt based on situation
+    if(rivalPlay&&rivalScore>0){
+      // Responding: find cheapest combo that beats rival
+      let cheapWin=null,cheapWinVal=Infinity;
+      for(const[ti,cards] of Object.entries(groups)){
+        const pl=cards.filter(c=>c.type==='player'||c.type==='legend');
+        const shield=cards.find(c=>c.type==='shield');
+        const coach=cards.find(c=>c.type==='coach');
+        for(let sz=1;sz<=Math.min(pl.length,4);sz++){
+          const sorted=[...pl].sort((a,b)=>b.rating-a.rating);
+          const combo=sorted.slice(0,sz);
+          let val=combo.reduce((s,c)=>s+c.rating,0);
+          const thisPlay=[...combo];
+          if(shield&&combo.length>=2){val*=2;thisPlay.push(shield)}
+          if(coach){
+            const rivalBest=rivalPlay.filter(c=>c.type==='player'||c.type==='legend').sort((a,b)=>b.rating-a.rating);
+            if(rivalBest.length>0)val+=rivalBest[0].rating; // Effective value includes coach neutralization
+            thisPlay.push(coach);
+          }
+          if(val>rivalScore&&thisPlay.length<cheapWinVal){
+            cheapWinVal=thisPlay.length;cheapWin=thisPlay;
+          }
+        }
+      }
+      if(cheapWin)play=cheapWin;
+      else{
+        // Can't beat rival cheaply, go all in
+        const combo=findBestCombo(4);
+        play=combo.play||[hand[0]];
+      }
+      // Tactical event use
+      const varCard=events.find(c=>c.type==='event_var');
+      if(varCard&&rivalHasEvents&&!play.includes(varCard))play.push(varCard);
+      const myScore=calcScore(play);
+      if(myScore<=rivalScore){
+        const red=events.find(c=>c.type==='event_red');
+        const yellow=events.find(c=>c.type==='event_yellow');
+        if(red&&!play.includes(red))play.push(red);
+        else if(yellow&&!play.includes(yellow))play.push(yellow);
+      }
+    }else{
+      // Playing first: medium combo, save resources
+      let bestCombo=null,bestVal=0;
+      for(const[ti,cards] of Object.entries(groups)){
+        const pl=cards.filter(c=>c.type==='player'||c.type==='legend');
+        if(pl.length>=2){
+          const sorted=[...pl].sort((a,b)=>b.rating-a.rating);
+          const combo=sorted.slice(0,2);
+          const val=combo.reduce((s,c)=>s+c.rating,0);
+          if(val>bestVal){bestVal=val;bestCombo=[...combo]}
+        }
+      }
+      if(bestCombo)play=bestCombo;
+      else{
+        const ranked=hand.filter(c=>c.rating>0).sort((a,b)=>b.rating-a.rating);
+        play=ranked.length>0?[ranked[0]]:[hand[0]];
+      }
+      // Moderate event use
+      if(Math.random()>0.4){
+        const yellow=events.find(c=>c.type==='event_yellow');
+        if(yellow&&!play.includes(yellow))play.push(yellow);
+      }
+    }
+  }else{
+    // Fallback (default): same as aggressive
+    const combo=findBestCombo(4);
+    play=combo.play||[hand[0]];
+    const red=events.find(c=>c.type==='event_red');
+    if(red&&!play.includes(red))play.push(red);
   }
   G.cpuPlay=play;
   G.cpuHand=G.cpuHand.filter(c=>!play.some(p=>p.id===c.id));
@@ -392,47 +731,113 @@ async function showEventMsg(text,sub){
 async function resolveBaza(){
   let pScore=calcScore(G.playerPlay);
   let cScore=calcScore(G.cpuPlay);
+  // Apply Epic Mode bonus
+  const pEpicBonus=getEpicBonus('player',G.playerPlay);
+  const cEpicBonus=getEpicBonus('cpu',G.cpuPlay);
+  if(pEpicBonus>0){pScore+=pEpicBonus;await showEventMsg('\u{1F525} Modo Epico!',`+${pEpicBonus} pts de comeback`)}
+  if(cEpicBonus>0){cScore+=cEpicBonus;await showEventMsg('\u{1F525} Modo Epico CPU!',`+${cEpicBonus} pts de comeback`)}
+  // Apply team abilities
+  const pAbility=getTeamAbility(G.playerPlay);
+  const cAbility=getTeamAbility(G.cpuPlay);
+  if(pAbility){
+    const r=await applyTeamAbility(pAbility,'player',G.playerPlay,G.cpuPlay,pScore,cScore);
+    pScore=r.myScore;cScore=r.rivalScore;
+  }
+  if(cAbility){
+    const r=await applyTeamAbility(cAbility,'cpu',G.cpuPlay,G.playerPlay,cScore,pScore);
+    cScore=r.myScore;pScore=r.rivalScore;
+  }
+  // Reset ability flags
+  G._blockCpuEvents=false;G._blockPlayerEvents=false;
+  G._shieldCoachPlayer=false;G._shieldCoachCpu=false;
+  G._doubleBonusPlayer=false;G._doubleBonusCpu=false;
+  G._superCoachPlayer=false;G._superCoachCpu=false;
+  // (Team abilities set flags above before coach/events resolve)
+  // Re-apply team abilities for flag-setting
+  const pAbilityPre=getTeamAbility(G.playerPlay);
+  const cAbilityPre=getTeamAbility(G.cpuPlay);
+  if(pAbilityPre){const a=pAbilityPre.ability;
+    if(a.effect==='block_events')G._blockCpuEvents=true;
+    if(a.effect==='shield_coach')G._shieldCoachPlayer=true;
+    if(a.effect==='double_bonus')G._doubleBonusPlayer=true;
+    if(a.effect==='super_coach')G._superCoachPlayer=true;
+    if(a.effect==='shield_protect'&&G.playerPlay.some(c=>c.type==='shield'))G._blockCpuEvents=true;
+  }
+  if(cAbilityPre){const a=cAbilityPre.ability;
+    if(a.effect==='block_events')G._blockPlayerEvents=true;
+    if(a.effect==='shield_coach')G._shieldCoachCpu=true;
+    if(a.effect==='double_bonus')G._doubleBonusCpu=true;
+    if(a.effect==='super_coach')G._superCoachCpu=true;
+    if(a.effect==='shield_protect'&&G.cpuPlay.some(c=>c.type==='shield'))G._blockPlayerEvents=true;
+  }
   // Apply coach power (eliminate best rival card)
   const pCoach=G.playerPlay.find(c=>c.type==='coach');
   const cCoach=G.cpuPlay.find(c=>c.type==='coach');
-  if(pCoach){
+  if(pCoach&&!G._shieldCoachCpu){
     const rivalPlayers=G.cpuPlay.filter(c=>c.type==='player'||c.type==='legend').sort((a,b)=>b.rating-a.rating);
-    if(rivalPlayers.length>0){
-      cScore-=rivalPlayers[0].rating;
-      await showEventMsg('\u{1F4CB} Entrenador!',`Elimina a ${rivalPlayers[0].name} (${rivalPlayers[0].rating}pts)`);
+    const removeCount=G._superCoachPlayer?2:1;
+    for(let i=0;i<Math.min(removeCount,rivalPlayers.length);i++){
+      cScore-=rivalPlayers[i].rating;
+      await showEventMsg('\u{1F4CB} Entrenador!',`Elimina a ${rivalPlayers[i].name} (${rivalPlayers[i].rating}pts)`);
     }
   }
-  if(cCoach){
+  if(cCoach&&!G._shieldCoachPlayer){
     const rivalPlayers=G.playerPlay.filter(c=>c.type==='player'||c.type==='legend').sort((a,b)=>b.rating-a.rating);
-    if(rivalPlayers.length>0){
-      pScore-=rivalPlayers[0].rating;
-      await showEventMsg('\u{1F4CB} Entrenador rival!',`Elimina a ${rivalPlayers[0].name} (${rivalPlayers[0].rating}pts)`);
+    const removeCount=G._superCoachCpu?2:1;
+    for(let i=0;i<Math.min(removeCount,rivalPlayers.length);i++){
+      pScore-=rivalPlayers[i].rating;
+      await showEventMsg('\u{1F4CB} Entrenador rival!',`Elimina a ${rivalPlayers[i].name} (${rivalPlayers[i].rating}pts)`);
     }
   }
   // Apply events that affect rival
   const pEvents=G.playerPlay.filter(c=>c.type.startsWith('event_'));
   const cEvents=G.cpuPlay.filter(c=>c.type.startsWith('event_'));
-  pEvents.forEach(e=>{
-    if(e.type==='event_yellow')cScore=Math.max(0,cScore-5);
-    if(e.type==='event_red')cScore=Math.floor(cScore/2);
-    if(e.type==='event_talk')pScore+=G.playerPlay.filter(c=>c.type==='player'||c.type==='legend').length;
+  // Check for VAR: cancels rival events
+  const pHasVar=pEvents.some(e=>e.type==='event_var');
+  const cHasVar=cEvents.some(e=>e.type==='event_var');
+  if(pHasVar&&cEvents.length>0){
+    await showEventMsg('\u{1F4FA} VAR!','Se anulan los eventos de la CPU');
+  }
+  if(cHasVar&&pEvents.length>0){
+    await showEventMsg('\u{1F4FA} VAR rival!','Se anulan tus eventos');
+  }
+  let activePlayerEvents=cHasVar?[]:pEvents.filter(e=>e.type!=='event_var');
+  let activeCpuEvents=pHasVar?[]:cEvents.filter(e=>e.type!=='event_var');
+  // Block events via team abilities
+  if(G._blockPlayerEvents){activePlayerEvents=[];if(pEvents.length>0)await showEventMsg('\u{1F6AB} Eventos bloqueados!','La habilidad rival anula tus eventos')}
+  if(G._blockCpuEvents){activeCpuEvents=[];if(cEvents.length>0)await showEventMsg('\u{1F6AB} Eventos CPU bloqueados!','Tu habilidad anula los eventos rivales')}
+  const pEpicMult=(G.epicMode&&G.epicMode.who==='player')?2:1;
+  const cEpicMult=(G.epicMode&&G.epicMode.who==='cpu')?2:1;
+  // Formation 5-4-1 reduces incoming event effects by 50%
+  const pDefense=getFormationEventReduction(G.cpuFormation); // CPU's defense reduces player events effect
+  const cDefense=getFormationEventReduction(G.playerFormation); // Player's defense reduces CPU events effect
+  activePlayerEvents.forEach(e=>{
+    if(e.type==='event_yellow')cScore=Math.max(0,cScore-Math.round(15*pEpicMult*pDefense));
+    if(e.type==='event_red'){const penalty=Math.min(Math.floor(cScore*0.3*pEpicMult*pDefense),Math.round(40*pEpicMult*pDefense));cScore=Math.max(0,cScore-penalty)}
+    if(e.type==='event_talk')pScore+=G.playerPlay.filter(c=>c.type==='player'||c.type==='legend').length*5*pEpicMult;
   });
-  cEvents.forEach(e=>{
-    if(e.type==='event_yellow')pScore=Math.max(0,pScore-5);
-    if(e.type==='event_red')pScore=Math.floor(pScore/2);
-    if(e.type==='event_talk')cScore+=G.cpuPlay.filter(c=>c.type==='player'||c.type==='legend').length;
+  activeCpuEvents.forEach(e=>{
+    if(e.type==='event_yellow')pScore=Math.max(0,pScore-Math.round(15*cEpicMult*cDefense));
+    if(e.type==='event_red'){const penalty=Math.min(Math.floor(pScore*0.3*cEpicMult*cDefense),Math.round(40*cEpicMult*cDefense));pScore=Math.max(0,pScore-penalty)}
+    if(e.type==='event_talk')cScore+=G.cpuPlay.filter(c=>c.type==='player'||c.type==='legend').length*5*cEpicMult;
   });
   pScore=Math.max(0,pScore);cScore=Math.max(0,cScore);
+  // Apply formation bonuses to base score
+  pScore=applyFormationToScore(pScore,G.playerPlay,G.playerFormation);
+  cScore=applyFormationToScore(cScore,G.cpuPlay,G.cpuFormation);
+  // Apply bets
+  pScore=Math.round(pScore*G.playerBet);
+  cScore=Math.round(cScore*G.cpuBet);
   // Determine winner
   const result=pScore>cScore?'win':pScore<cScore?'lose':'draw';
   const r=$('#play-result');
   if(result==='win'){
-    pScore+=1; // Bonus
+    pScore+=G._doubleBonusPlayer?2:1; // Bonus (doubled by team ability)
     G.playerBazas++;G.playerStreak++;G.cpuStreak=0;
     r.textContent=`GANAS! ${pScore}-${cScore}`;r.className='play-result win';
     vibrate([100,50,100]);
   }else if(result==='lose'){
-    cScore+=1;
+    cScore+=G._doubleBonusCpu?2:1;
     G.cpuBazas++;G.cpuStreak++;G.playerStreak=0;
     r.textContent=`PIERDES ${pScore}-${cScore}`;r.className='play-result lose';
     vibrate(200);
@@ -467,6 +872,18 @@ function calcScore(cards){
   return score;
 }
 
+// Check if team ability triggers (3+ cards from same team)
+function getTeamAbility(cards){
+  const nonEvent=cards.filter(c=>!c.type.startsWith('event_'));
+  if(nonEvent.length<3)return null;
+  const team=nonEvent[0].team;
+  if(team==null)return null;
+  if(!nonEvent.every(c=>c.team===team))return null;
+  const players=nonEvent.filter(c=>c.type==='player'||c.type==='legend');
+  if(players.length<3)return null;
+  return{teamIdx:team,ability:TEAM_ABILITIES[team],teamName:TEAMS[team].n};
+}
+
 function checkWin(){
   if(G.playerScore>=1000)return'player';
   if(G.cpuScore>=1000)return'cpu';
@@ -482,22 +899,100 @@ function checkWin(){
 
 // ==================== DRAW PHASE ====================
 async function drawPhase(){
-  const before=new Set(G.playerHand.map(c=>c.id));
-  while(G.playerHand.length<6&&G.deck.length>0)G.playerHand.push(G.deck.pop());
-  while(G.cpuHand.length<6&&G.deck.length>0)G.cpuHand.push(G.deck.pop());
-  G.newCardIds=new Set(G.playerHand.filter(c=>!before.has(c.id)).map(c=>c.id));
+  const playerMax=(G.playerFormation&&G.playerFormation.id==='442')?7:6;
+  const cpuMax=(G.cpuFormation&&G.cpuFormation.id==='442')?7:6;
+  const playerNeed=playerMax-G.playerHand.length;
+  const cpuNeed=cpuMax-G.cpuHand.length;
+  const totalNeed=playerNeed+cpuNeed;
+  if(totalNeed<=0||G.deck.length===0)return;
+
+  // Draft: reveal cards for player to pick
+  const available=[];
+  const revealCount=Math.min(totalNeed+2,G.deck.length); // Show a few extra choices
+  for(let i=0;i<revealCount;i++)available.push(G.deck.pop());
+
+  let pickedCards=[];
+  if(playerNeed>0&&available.length>0){
+    const pickCount=Math.min(playerNeed,available.length);
+    pickedCards=await showDraftOverlay(available,pickCount);
+    pickedCards.forEach(c=>G.playerHand.push(c));
+    // Remove picked from available
+    const pickedIds=new Set(pickedCards.map(c=>c.id));
+    const remaining=available.filter(c=>!pickedIds.has(c.id));
+    // CPU picks best from remaining
+    const cpuPickCount=Math.min(cpuNeed,remaining.length);
+    const cpuPicks=remaining.sort((a,b)=>(b.rating||0)-(a.rating||0)).slice(0,cpuPickCount);
+    cpuPicks.forEach(c=>G.cpuHand.push(c));
+    // Return unpicked to deck
+    const allPicked=new Set([...pickedIds,...cpuPicks.map(c=>c.id)]);
+    remaining.filter(c=>!allPicked.has(c.id)).forEach(c=>G.deck.push(c));
+    shuffle(G.deck);
+  }else{
+    // Only CPU needs cards
+    const cpuPickCount=Math.min(cpuNeed,available.length);
+    const cpuPicks=available.slice(0,cpuPickCount);
+    cpuPicks.forEach(c=>G.cpuHand.push(c));
+    available.slice(cpuPickCount).forEach(c=>G.deck.push(c));
+    shuffle(G.deck);
+  }
+
+  G.newCardIds=new Set(pickedCards.map(c=>c.id));
   renderGame();
   G.newCardIds=null;
-  // Check if player needs to discard
-  if(G.playerHand.length>6){
-    await playerDiscard(G.playerHand.length-6);
-  }
-  // CPU auto-discards lowest
-  while(G.cpuHand.length>6){
+  // Handle overflow
+  if(G.playerHand.length>playerMax)await playerDiscard(G.playerHand.length-playerMax);
+  while(G.cpuHand.length>cpuMax){
     const worst=G.cpuHand.reduce((min,c,i)=>(!min||((c.rating||0)<(min.c.rating||0))?{c,i}:min),null);
     if(worst)G.cpuHand.splice(worst.i,1);
     else G.cpuHand.pop();
   }
+}
+
+function showDraftOverlay(available,pickCount){
+  return new Promise(resolve=>{
+    const o=$('#draft-overlay');
+    const hand=$('#draft-hand');
+    const picked=new Set();
+    $('#draft-count').textContent=pickCount;
+    $('#draft-remaining').textContent=pickCount;
+    hand.innerHTML=available.map(c=>{
+      const html=cardHTML(c,false);
+      return html.replace('data-id=','onclick="toggleDraft('+c.id+')" data-id=');
+    }).join('');
+    o.classList.add('show');
+    window._draftAvailable=available;
+    window._draftPicked=picked;
+    window._draftMax=pickCount;
+    window._draftResolve=resolve;
+    const checkBtn=()=>{
+      const btn=$('#btn-draft');
+      $('#draft-remaining').textContent=pickCount-picked.size;
+      if(picked.size===pickCount)btn.classList.remove('btn-disabled');
+      else btn.classList.add('btn-disabled');
+    };
+    window._draftCheck=checkBtn;
+    checkBtn();
+  });
+}
+
+function toggleDraft(id){
+  const picked=window._draftPicked;
+  if(picked.has(id))picked.delete(id);
+  else if(picked.size<window._draftMax)picked.add(id);
+  $$('#draft-hand .card').forEach(el=>{
+    const cid=parseInt(el.dataset.id);
+    if(picked.has(cid))el.classList.add('selected');
+    else el.classList.remove('selected');
+  });
+  if(window._draftCheck)window._draftCheck();
+}
+
+function confirmDraft(){
+  const picked=window._draftPicked;
+  if(picked.size!==window._draftMax)return;
+  const cards=window._draftAvailable.filter(c=>picked.has(c.id));
+  $('#draft-overlay').classList.remove('show');
+  if(window._draftResolve){window._draftResolve(cards);window._draftResolve=null}
 }
 
 function playerDiscard(count){
@@ -558,6 +1053,7 @@ function endGame(winner){
   else{title.textContent='EMPATE';title.className='end-result defeat'}
   const statsDiv=$('#end-stats');
   const reason=G.playerScore>=1000||G.cpuScore>=1000?'1000 puntos':G.playerBazas>=10||G.cpuBazas>=10?'10 bazas':G.playerStreak>=7||G.cpuStreak>=7?'7 bazas seguidas':'Fin del mazo';
+  const cpuP=G.cpuPersonality?CPU_PERSONALITIES[G.cpuPersonality]:null;
   statsDiv.innerHTML=`
     <div class="end-stat"><span>Tu puntuacion</span><span>${G.playerScore}</span></div>
     <div class="end-stat"><span>CPU puntuacion</span><span>${G.cpuScore}</span></div>
@@ -566,6 +1062,8 @@ function endGame(winner){
     <div class="end-stat"><span>Mejor racha</span><span>${Math.max(G.playerStreak,stats.bestStreak)}</span></div>
     <div class="end-stat"><span>Bazas totales</span><span>${G.bazaNum}</span></div>
     <div class="end-stat"><span>Victoria por</span><span>${reason}</span></div>
+    ${G.playerFormation?`<div class="end-stat"><span>Tu formacion</span><span>${G.playerFormation.name}</span></div>`:''}
+    ${cpuP?`<div class="end-stat"><span>CPU rival</span><span>${cpuP.icon} ${cpuP.name}</span></div>`:''}
   `;
   showScreen('endgame');
   vibrate(winner==='player'?[200,100,200,100,200]:200);
@@ -666,10 +1164,26 @@ function animateScore(el,target){
 function renderScoreboard(){
   animateScore($('#sc-player'),G.playerScore);
   animateScore($('#sc-cpu'),G.cpuScore);
-  $('#sc-bazas').textContent=`Baza ${G.bazaNum} \u00B7 ${G.playerBazas}-${G.cpuBazas}`;
-  const streak=G.playerStreak>1?`Racha: ${G.playerStreak}`:G.cpuStreak>1?`Racha CPU: ${G.cpuStreak}`:'';
+  const fmtP=G.playerFormation?G.playerFormation.name:'';
+  const fmtC=G.cpuFormation?G.cpuFormation.name:'';
+  const formInfo=fmtP?` · ${fmtP} vs ${fmtC}`:'';
+  $('#sc-bazas').textContent=`Baza ${G.bazaNum} \u00B7 ${G.playerBazas}-${G.cpuBazas}${formInfo}`;
+  let streak=G.playerStreak>1?`Racha: ${G.playerStreak}`:G.cpuStreak>1?`Racha CPU: ${G.cpuStreak}`:'';
+  if(G.epicMode)streak+=` \u{1F525} Epico: ${G.epicMode.who==='player'?'Tu':'CPU'} (${G.epicMode.remaining})`;
   $('#sc-streak').textContent=streak;
   $('#sc-deck').textContent=`Mazo: ${G.deck.length}`;
+  // Show bets
+  const betInfo=$('#sc-bets');
+  if(betInfo){
+    if(G.playerBet>1||G.cpuBet>1){
+      const pBet=G.playerBet>1?`Tu: ${G.playerBet}x`:'';
+      const cBet=G.cpuBet>1?`CPU: ${G.cpuBet}x`:'';
+      betInfo.textContent=[pBet,cBet].filter(Boolean).join(' · ');
+      betInfo.className='bet-indicator'+(G.playerBet>=3||G.cpuBet>=3?' bet-max':' bet-high');
+    }else{
+      betInfo.textContent='';betInfo.className='bet-indicator';
+    }
+  }
   const turnEl=$('#sc-turn');
   if(G.turnIndicator==='player'){turnEl.textContent='TU TURNO';turnEl.className='turn-indicator turn-player'}
   else if(G.turnIndicator==='cpu'){turnEl.textContent='TURNO CPU';turnEl.className='turn-indicator turn-cpu'}

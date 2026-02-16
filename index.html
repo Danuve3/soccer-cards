@@ -79,12 +79,31 @@
     <ul>
       <li><b>Cambio de campo</b> &#128260; - Intercambia manos con el rival</li>
       <li><b>Robo de balon</b> &#128400; - Roba 1 carta aleatoria del rival</li>
-      <li><b>Tarjeta amarilla</b> &#129000; - Rival pierde 5 puntos en la baza</li>
-      <li><b>Tarjeta roja</b> &#129001; - Puntuacion rival se divide entre 2</li>
-      <li><b>Charla del descanso</b> &#128172; - +1 punto por cada carta de jugador que juegues</li>
+      <li><b>Tarjeta amarilla</b> &#129000; - Rival pierde 15 puntos en la baza</li>
+      <li><b>Tarjeta roja</b> &#129001; - -30% puntuacion rival (max -40 pts)</li>
+      <li><b>Charla del descanso</b> &#128172; - +5 puntos por cada jugador que juegues</li>
+      <li><b>VAR</b> &#128250; - Anula todos los eventos jugados por el rival</li>
     </ul>
+    <h3>Habilidades de Equipo</h3>
+    <p>Juega <b>3 o mas jugadores</b> del mismo equipo para activar su habilidad pasiva unica. Cada equipo tiene un poder especial distinto.</p>
+    <h3>Apuestas</h3>
+    <p>Antes de cada baza, elige multiplicador: <b>1x</b> (seguro), <b>2x</b> (arriesgo) o <b>3x</b> (all-in). Los puntos de la baza se multiplican.</p>
+    <h3>Modo Epico</h3>
+    <p>Si vas perdiendo por 200+ puntos o 4+ bazas, entra el <b>Modo Epico</b>: +10 pts por jugador y eventos con efecto doble durante 3 bazas.</p>
     <h3>Fin de Baza</h3>
     <p>Tras comparar, ambos roban hasta tener 6 cartas. Las cartas jugadas se descartan permanentemente.</p>
+    <h3>Formaciones</h3>
+    <p>Al inicio eliges formacion tactica:</p>
+    <ul>
+      <li><b>4-3-3</b> (Ataque) - +15% puntuacion en combos de 3+ jugadores</li>
+      <li><b>4-4-2</b> (Equilibrio) - Empiezas con 7 cartas en vez de 6</li>
+      <li><b>5-4-1</b> (Defensa) - Eventos rivales tienen 50% menos efecto</li>
+      <li><b>3-5-2</b> (Control) - Ves 1 carta de la mano rival cada baza</li>
+    </ul>
+    <h3>Personalidades CPU</h3>
+    <p>La CPU tiene personalidad propia cada partida: Conservador, Agresivo, Tramposo o Tactico. Cada uno juega de forma distinta.</p>
+    <h3>Mercado de Fichajes</h3>
+    <p>Tras cada baza, en vez de robar a ciegas, eliges cartas de un mercado abierto.</p>
     <h3>Puntuacion</h3>
     <p>Se suman los valores de las cartas jugadas. El ganador recibe +1 punto de bonificacion.</p>
   </div>
@@ -117,6 +136,7 @@
       <span class="score-bazas" id="sc-bazas">Baza 1</span>
       <span class="turn-indicator" id="sc-turn"></span>
       <span class="score-streak" id="sc-streak"></span>
+      <span class="bet-indicator" id="sc-bets"></span>
       <span class="deck-indicator" id="sc-deck">Mazo: 0</span>
     </div>
     <div class="score-cpu">
@@ -168,9 +188,57 @@
   <button class="btn btn-primary btn-disabled" id="btn-discard" onclick="confirmDiscard()">Confirmar</button>
 </div>
 
+<div class="discard-overlay" id="draft-overlay">
+  <div class="draft-title">Mercado de Fichajes</div>
+  <div class="draft-sub">Elige <span id="draft-count">0</span> cartas · Quedan: <span id="draft-remaining">0</span></div>
+  <div class="draft-hand" id="draft-hand"></div>
+  <button class="btn btn-primary btn-disabled" id="btn-draft" onclick="confirmDraft()">Fichar</button>
+</div>
+
 <div class="overlay" id="event-overlay">
   <div class="overlay-text" id="event-text"></div>
   <div class="overlay-sub" id="event-sub"></div>
+</div>
+
+<div class="overlay" id="formation-overlay">
+  <div class="overlay-text">Elige Formacion</div>
+  <div class="overlay-sub">Tu tactica para esta partida</div>
+  <div class="formation-grid">
+    <div class="formation-card" data-formation="433">
+      <div class="formation-icon" style="color:var(--red)">&#9876;&#65039;</div>
+      <div class="formation-name">4-3-3</div>
+      <div class="formation-label">Ataque</div>
+      <div class="formation-desc">+15% puntuacion en combos de 3+ jugadores</div>
+    </div>
+    <div class="formation-card" data-formation="442">
+      <div class="formation-icon" style="color:var(--gold)">&#9878;&#65039;</div>
+      <div class="formation-name">4-4-2</div>
+      <div class="formation-label">Equilibrio</div>
+      <div class="formation-desc">Empiezas con 7 cartas en vez de 6</div>
+    </div>
+    <div class="formation-card" data-formation="541">
+      <div class="formation-icon" style="color:var(--blue)">&#128737;&#65039;</div>
+      <div class="formation-name">5-4-1</div>
+      <div class="formation-label">Defensa</div>
+      <div class="formation-desc">Eventos rivales -50% efecto</div>
+    </div>
+    <div class="formation-card" data-formation="352">
+      <div class="formation-icon" style="color:var(--purple)">&#128065;&#65039;</div>
+      <div class="formation-name">3-5-2</div>
+      <div class="formation-label">Control</div>
+      <div class="formation-desc">Ves 1 carta rival cada baza</div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="bet-overlay">
+  <div class="overlay-text">Apuesta</div>
+  <div class="overlay-sub">Multiplica los puntos de esta baza</div>
+  <div class="bet-buttons">
+    <button class="btn bet-btn bet-1x" data-bet="1">1x<span>Seguro</span></button>
+    <button class="btn bet-btn bet-2x" data-bet="2">2x<span>Arriesgo</span></button>
+    <button class="btn bet-btn bet-3x" data-bet="3">3x<span>All-in</span></button>
+  </div>
 </div>
 
 <script src="./data.js"></script>
