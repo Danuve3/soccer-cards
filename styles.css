@@ -21,8 +21,9 @@ background-image:
 
 /* === MENU === */
 #menu{justify-content:center;gap:16px;padding:20px}
-.logo{font-family:var(--font-d);font-size:64px;font-weight:700;line-height:1;color:var(--gold);text-shadow:0 0 40px rgba(212,175,55,.4),0 4px 0 var(--gold3);letter-spacing:2px;text-align:center;animation:logoGlow 3s ease-in-out infinite alternate}
+.logo{font-family:var(--font-d);font-size:64px;font-weight:700;line-height:.78;color:var(--gold);text-shadow:0 0 40px rgba(212,175,55,.4),0 4px 0 var(--gold3);letter-spacing:2px;text-align:center;animation:logoFloat 4s ease-in-out infinite,logoGlow 3s ease-in-out infinite alternate}
 .logo-sub{font-family:var(--font-d);font-size:22px;color:var(--text2);letter-spacing:8px;text-transform:uppercase;text-align:center;margin-top:-4px}
+@keyframes logoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 @keyframes logoGlow{0%{text-shadow:0 0 20px rgba(212,175,55,.3),0 4px 0 var(--gold3)}100%{text-shadow:0 0 60px rgba(212,175,55,.6),0 4px 0 var(--gold3)}}
 .menu-cards{display:flex;justify-content:center;gap:-10px;margin:20px 0 10px;position:relative;height:100px}
 .menu-card{width:65px;height:91px;border-radius:6px;position:absolute;box-shadow:0 4px 15px var(--bg);transition:transform .3s var(--ease)}
