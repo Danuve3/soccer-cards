@@ -383,6 +383,7 @@ animation:shinySlide 3s ease-in-out infinite;
 
 /* === PLAYABLE STATE === */
 .card.playable .card-inner{outline:5px solid var(--green);outline-offset:-1px;border-radius:7px}
+.card.dimmed{pointer-events:none;filter:grayscale(.6) brightness(.5)}
 
 /* === CARD ANIMATIONS === */
 @keyframes cardPlayIn{

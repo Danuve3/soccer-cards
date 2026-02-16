@@ -21,6 +21,12 @@ let G={
   playerFormation:null,cpuFormation:null,
   epicMode:null, // {who:'player'|'cpu', remaining:3}
   cpuPersonality:null,
+  // Turn-based baza
+  bazaTeam:null,cpuBazaTeam:null,
+  cpuPlan:[],cpuPlanIndex:0,
+  evtPP:0,evtPC:0,evtCP:0,evtCC:0,
+  draftFirst:'player',
+  eventEffects:{},
   // Match format
   period:'first_half', // first_half, second_half, extra_time, penalties
   penaltyRound:0,penaltyPlayer:0,penaltyCpu:0
@@ -134,6 +140,11 @@ async function startGame(diff){
     animating:false,
     playerFormation:null,cpuFormation:null,
     epicMode:null,cpuPersonality:null,
+    bazaTeam:null,cpuBazaTeam:null,
+    cpuPlan:[],cpuPlanIndex:0,
+    evtPP:0,evtPC:0,evtCP:0,evtCC:0,
+    draftFirst:'player',
+    eventEffects:{},
     period:'first_half',penaltyRound:0,penaltyPlayer:0,penaltyCpu:0
   };
   // Pick CPU personality first (needed for formation choice)
@@ -171,8 +182,22 @@ async function continueGame(){
     G.cpuPersonality=G.cpuPersonality||null;
     G.period=G.period||'first_half';
     G.penaltyRound=G.penaltyRound||0;G.penaltyPlayer=G.penaltyPlayer||0;G.penaltyCpu=G.penaltyCpu||0;
+    G.bazaTeam=null;G.cpuBazaTeam=null;
+    G.cpuPlan=[];G.cpuPlanIndex=0;
+    G.evtPP=0;G.evtPC=0;G.evtCP=0;G.evtCC=0;
+    G.draftFirst='player';
+    G.eventEffects=G.eventEffects||{};
     showScreen('game');
     renderGame();
+    if(G.phase==='playing'){
+      if(G.playerPlay.length>0||G.cpuPlay.length>0){
+        G.discard.push(...G.playerPlay,...G.cpuPlay);
+        G.playerPlay=[];G.cpuPlay=[];
+        clearPlayZone();
+        G.bazaNum--;
+      }
+      await nextBaza();
+    }
   }catch(e){console.error(e)}
 }
 
@@ -206,29 +231,19 @@ async function nextBaza(){
   G.bazaNum++;
   G.playerPlay=[];G.cpuPlay=[];
   G.selected=new Set();
+  G.bazaTeam=null;G.cpuBazaTeam=null;
+  G.cpuPlan=[];G.cpuPlanIndex=0;
+  G.evtPP=0;G.evtPC=0;G.evtCP=0;G.evtCC=0;
+  G.eventEffects={};
   clearPlayZone();
   renderGame();
-  // Check epic mode
   checkEpicMode();
-  // Formation 3-5-2: peek at one rival card
   if(G.playerFormation&&G.playerFormation.id==='352'&&G.cpuHand.length>0){
     const peekCard=G.cpuHand[Math.floor(Math.random()*G.cpuHand.length)];
     await showEventMsg('\u{1F441}\uFE0F Espionaje!',`Rival tiene: ${peekCard.name}${peekCard.rating?' ('+peekCard.rating+')':''}`);
   }
-  G.turnIndicator=G.playerFirst?'player':'cpu';
-  renderScoreboard();
-  if(!G.playerFirst){
-    G.animating=true;
-    await wait(800);
-    cpuTurn();
-    renderCpuPlay();
-    renderMatchInfo();
-    await wait(600);
-    G.animating=false;
-    G.turnIndicator='player';
-    renderScoreboard();
-    renderHand();
-  }
+  await turnLoop();
+  await resolveBaza();
 }
 
 // === FORMATIONS ===
@@ -415,75 +430,190 @@ function clearPlayZone(){
   const r=$('#play-result');r.classList.remove('show','win','lose','draw');r.textContent='';
 }
 
-// ==================== PLAYER ACTIONS ====================
-function toggleSelect(cardId){
-  if(G.animating||G.phase!=='playing')return;
-  if(G.playerPlay.length>0)return;
-  if(G.selected.has(cardId)){
-    G.selected.delete(cardId);
-  }else{
-    const playable=getPlayableIds();
-    if(playable&&!playable.has(cardId)){
-      G.selected=new Set([cardId]);
+// ==================== TURN-BASED BAZA FLOW ====================
+async function turnLoop(){
+  let consecutivePasses=0;
+  let currentTurn=G.playerFirst?'player':'cpu';
+  while(consecutivePasses<2){
+    G.turnIndicator=currentTurn;
+    renderScoreboard();
+    if(currentTurn==='player'){
+      if(G.playerHand.length===0){consecutivePasses++;currentTurn='cpu';continue}
+      const result=await playerTurnStep();
+      if(result){consecutivePasses=0}else{consecutivePasses++}
     }else{
-      G.selected.add(cardId);
+      if(G.cpuHand.length===0){consecutivePasses++;currentTurn='player';continue}
+      await wait(600);
+      const result=await cpuTurnStep();
+      if(result){consecutivePasses=0}else{consecutivePasses++}
     }
+    currentTurn=currentTurn==='player'?'cpu':'player';
   }
-  updatePlayButton();
-  renderHand();
-}
-
-function updatePlayButton(){
-  const btn=$('#btn-play');
-  if(G.selected.size>0&&validateSelection()){
-    btn.classList.remove('btn-disabled');
-  }else{
-    btn.classList.add('btn-disabled');
-  }
-}
-
-function validateSelection(){
-  const cards=[...G.selected].map(id=>G.playerHand.find(c=>c.id===id)).filter(Boolean);
-  if(cards.length===0)return false;
-  const nonEvent=cards.filter(c=>!c.type.startsWith('event_'));
-  const events=cards.filter(c=>c.type.startsWith('event_'));
-  if(nonEvent.length===0&&events.length>0)return true; // Event-only play
-  if(nonEvent.length===0)return false;
-  // Check all non-event cards are from the same team
-  const team=nonEvent[0].team;
-  if(!nonEvent.every(c=>c.team===team))return false;
-  // Shield/coach only with player/legend
-  const players=nonEvent.filter(c=>c.type==='player'||c.type==='legend');
-  const shields=nonEvent.filter(c=>c.type==='shield');
-  const coaches=nonEvent.filter(c=>c.type==='coach');
-  if((shields.length>0||coaches.length>0)&&players.length===0)return false;
-  return true;
-}
-
-async function playSelected(){
-  if(G.animating||G.selected.size===0||!validateSelection())return;
-  G.animating=true;
   G.turnIndicator=null;
   renderScoreboard();
-  vibrate(50);
-  const playCards=[...G.selected].map(id=>G.playerHand.find(c=>c.id===id)).filter(Boolean);
-  G.playerPlay=playCards;
-  G.playerHand=G.playerHand.filter(c=>!G.selected.has(c.id));
-  G.selected=new Set();
-  await handlePreEvents(playCards,'player');
-  renderPlayerPlay();
-  renderHand();
-  if(G.cpuPlay.length===0){
-    G.turnIndicator='cpu';
-    renderScoreboard();
-    await wait(800);
-    cpuTurn(G.playerPlay); // CPU sees player's cards and can respond
-    renderCpuPlay();
-    renderMatchInfo();
-    await wait(600);
+}
+
+function playerTurnStep(){
+  return new Promise(resolve=>{
+    const playable=getPlayableCardsBaza(G.playerHand,G.bazaTeam,G.playerPlay);
+    if(playable.size===0){resolve(null);return}
+    window._turnResolve=resolve;
+    window._turnSelected=null;
+    window._turnSelectCard=(id)=>{
+      if(!window._turnResolve)return;
+      window._turnSelected=window._turnSelected===id?null:id;
+      renderHand();
+    };
+    const btn=$('#btn-play');
+    btn.textContent='Pasar';
+    btn.onclick=async()=>{
+      if(!window._turnResolve)return;
+      if(window._turnSelected!=null){
+        const id=window._turnSelected;
+        const card=G.playerHand.find(c=>c.id===id);
+        if(!card)return;
+        const res=window._turnResolve;
+        window._turnSelectCard=null;window._turnResolve=null;window._turnSelected=null;
+        G.playerHand=G.playerHand.filter(c=>c.id!==id);
+        G.playerPlay.push(card);
+        if(!card.type.startsWith('event_')&&card.team!=null)G.bazaTeam=card.team;
+        await handlePreEventsSingle(card,'player');
+        vibrate(50);
+        renderPlayerPlay();
+        btn.textContent='Pasar';
+        renderHand();
+        res(card);
+      }else{
+        const res=window._turnResolve;
+        window._turnSelectCard=null;window._turnResolve=null;window._turnSelected=null;
+        btn.onclick=null;
+        renderHand();
+        res(null);
+      }
+    };
+    renderHand();
+  });
+}
+
+async function cpuTurnStep(){
+  if(G.cpuPlan.length===0&&G.cpuPlanIndex===0){
+    cpuPlanBaza();
   }
-  await resolveBaza();
-  G.animating=false;
+  while(G.cpuPlanIndex<G.cpuPlan.length){
+    const card=G.cpuPlan[G.cpuPlanIndex];
+    G.cpuPlanIndex++;
+    if(!G.cpuHand.some(c=>c.id===card.id))continue;
+    G.cpuHand=G.cpuHand.filter(c=>c.id!==card.id);
+    G.cpuPlay.push(card);
+    if(!card.type.startsWith('event_')&&card.team!=null)G.cpuBazaTeam=card.team;
+    await handlePreEventsSingle(card,'cpu');
+    renderCpuPlay();renderMatchInfo();
+    await wait(600);
+    return card;
+  }
+  return null;
+}
+
+function cpuPlanBaza(){
+  const savedCpuPlay=[...G.cpuPlay];
+  const savedCpuHand=[...G.cpuHand];
+  cpuTurn(G.playerPlay.length>0?G.playerPlay:undefined);
+  G.cpuPlan=[...G.cpuPlay];
+  G.cpuPlanIndex=0;
+  G.cpuPlay=savedCpuPlay;
+  G.cpuHand=savedCpuHand;
+}
+
+function getPlayableCardsBaza(hand,bazaTeam,play){
+  const ids=new Set();
+  const hasTeamPlayer=(team)=>play.some(c=>(c.type==='player'||c.type==='legend')&&c.team===team);
+  hand.forEach(c=>{
+    if(c.type.startsWith('event_')){ids.add(c.id);return}
+    if(c.type==='shield'||c.type==='coach'){
+      if(hasTeamPlayer(c.team)&&(bazaTeam===null||c.team===bazaTeam))ids.add(c.id);
+      return;
+    }
+    if(bazaTeam===null||c.team===bazaTeam)ids.add(c.id);
+  });
+  return ids;
+}
+
+async function handlePreEventsSingle(card,who){
+  if(card.type==='event_swap'){
+    await showEventMsg('\u{1F504} Cambio de campo!','Se intercambian las manos');
+    const temp=G.playerHand;G.playerHand=G.cpuHand;G.cpuHand=temp;
+    G.cpuPlan=[];G.cpuPlanIndex=0;
+    renderGame();
+  }
+  if(card.type==='event_steal'){
+    const target=who==='player'?G.cpuHand:G.playerHand;
+    const receiver=who==='player'?G.playerHand:G.cpuHand;
+    if(target.length>0){
+      const idx=Math.floor(Math.random()*target.length);
+      const stolen=target.splice(idx,1)[0];
+      receiver.push(stolen);
+      await showEventMsg('\u{1F590} Robo de balon!',`Se roba: ${stolen.name}`);
+      G.cpuPlan=G.cpuPlan.filter(c=>c.id!==stolen.id);
+      renderGame();
+    }
+  }
+  if(card.type==='event_yellow'){
+    const epicMult=(G.epicMode&&G.epicMode.who===who)?2:1;
+    const defForm=who==='player'?G.cpuFormation:G.playerFormation;
+    const defense=getFormationEventReduction(defForm);
+    const penalty=Math.round(15*epicMult*defense);
+    if(who==='player'){G.evtCP-=penalty;G.eventEffects[card.id]={who,onP:0,onC:-penalty}}
+    else{G.evtPC-=penalty;G.eventEffects[card.id]={who,onP:-penalty,onC:0}}
+    await showEventMsg('\u{1F7E1} Tarjeta amarilla!',`-${penalty} pts al rival`);
+  }
+  if(card.type==='event_red'){
+    const rivalPlay=who==='player'?G.cpuPlay:G.playerPlay;
+    const rivalScore=calcScore(rivalPlay);
+    const epicMult=(G.epicMode&&G.epicMode.who===who)?2:1;
+    const defForm=who==='player'?G.cpuFormation:G.playerFormation;
+    const defense=getFormationEventReduction(defForm);
+    const penalty=Math.min(Math.floor(rivalScore*0.3*epicMult*defense),Math.round(40*epicMult*defense));
+    if(who==='player'){G.evtCP-=penalty;G.eventEffects[card.id]={who,onP:0,onC:-penalty}}
+    else{G.evtPC-=penalty;G.eventEffects[card.id]={who,onP:-penalty,onC:0}}
+    await showEventMsg('\u{1F534} Tarjeta roja!',`-${penalty} pts al rival`);
+  }
+  if(card.type==='event_talk'){
+    const myPlay=who==='player'?G.playerPlay:G.cpuPlay;
+    const pCount=myPlay.filter(c=>c.type==='player'||c.type==='legend').length;
+    const epicMult=(G.epicMode&&G.epicMode.who===who)?2:1;
+    const bonus=pCount*5*epicMult;
+    if(who==='player'){G.evtPP+=bonus;G.eventEffects[card.id]={who,onP:bonus,onC:0}}
+    else{G.evtCC+=bonus;G.eventEffects[card.id]={who,onP:0,onC:bonus}}
+    await showEventMsg('\u{1F4AC} Charla del descanso!',`+${bonus} pts (${pCount} jugadores)`);
+  }
+  if(card.type==='event_var'){
+    const rivalPlay=who==='player'?G.cpuPlay:G.playerPlay;
+    if(rivalPlay.length===0){
+      await showEventMsg('\u{1F4FA} VAR!','No hay cartas del rival que anular');
+    }else{
+      const cancelled=rivalPlay.pop();
+      const rivalHand=who==='player'?G.cpuHand:G.playerHand;
+      rivalHand.push(cancelled);
+      // Reverse event effects if the cancelled card had any
+      const fx=G.eventEffects[cancelled.id];
+      if(fx){
+        if(fx.who==='player'){G.evtPP-=fx.onP;G.evtCP-=fx.onC}
+        else{G.evtPC-=fx.onP;G.evtCC-=fx.onC}
+        delete G.eventEffects[cancelled.id];
+      }
+      // Invalidate CPU plan if stolen card was in it
+      G.cpuPlan=G.cpuPlan.filter(c=>c.id!==cancelled.id);
+      // Recalculate rival bazaTeam from remaining non-event cards
+      const rivalTeamKey=who==='player'?'cpuBazaTeam':'bazaTeam';
+      const remainingTeams=rivalPlay.filter(c=>!c.type.startsWith('event_')&&c.team!=null);
+      G[rivalTeamKey]=remainingTeams.length>0?remainingTeams[0].team:null;
+      const label=who==='player'?'VAR!':'VAR rival!';
+      await showEventMsg(`\u{1F4FA} ${label}`,`Se anula: ${cancelled.name}`);
+      if(who==='player'){renderCpuPlay()}else{renderPlayerPlay()}
+      renderHand();
+      renderGame();
+    }
+  }
 }
 
 // ==================== CPU AI ====================
@@ -650,27 +780,6 @@ function cpuTurn(rivalPlay){
 }
 
 // ==================== EVENTS ====================
-async function handlePreEvents(cards,who){
-  const swapEvt=cards.find(c=>c.type==='event_swap');
-  const stealEvt=cards.find(c=>c.type==='event_steal');
-  if(swapEvt){
-    await showEventMsg('\u{1F504} Cambio de campo!','Se intercambian las manos');
-    const temp=G.playerHand;G.playerHand=G.cpuHand;G.cpuHand=temp;
-    renderGame();
-  }
-  if(stealEvt){
-    const target=who==='player'?G.cpuHand:G.playerHand;
-    const receiver=who==='player'?G.playerHand:G.cpuHand;
-    if(target.length>0){
-      const idx=Math.floor(Math.random()*target.length);
-      const stolen=target.splice(idx,1)[0];
-      receiver.push(stolen);
-      await showEventMsg('\u{1F590} Robo de balon!',`Se roba: ${stolen.name}`);
-      renderGame();
-    }
-  }
-}
-
 async function showEventMsg(text,sub){
   const o=$('#event-overlay');
   const t=$('#event-text');
@@ -745,38 +854,19 @@ async function resolveBaza(){
       await showEventMsg('\u{1F4CB} Entrenador rival!',`Elimina a ${rivalPlayers[i].name} (${rivalPlayers[i].rating}pts)`);
     }
   }
-  // Apply events that affect rival
-  const pEvents=G.playerPlay.filter(c=>c.type.startsWith('event_'));
-  const cEvents=G.cpuPlay.filter(c=>c.type.startsWith('event_'));
-  // Check for VAR: cancels rival events
-  const pHasVar=pEvents.some(e=>e.type==='event_var');
-  const cHasVar=cEvents.some(e=>e.type==='event_var');
-  if(pHasVar&&cEvents.length>0){
-    await showEventMsg('\u{1F4FA} VAR!','Se anulan los eventos de la CPU');
+  // Apply pre-resolved event modifiers (events resolved immediately during turns)
+  if(G._blockPlayerEvents){
+    G.evtPP=0;G.evtCP=0;
+    if(G.playerPlay.some(c=>c.type.startsWith('event_')))
+      await showEventMsg('\u{1F6AB} Eventos bloqueados!','La habilidad rival anula tus eventos');
   }
-  if(cHasVar&&pEvents.length>0){
-    await showEventMsg('\u{1F4FA} VAR rival!','Se anulan tus eventos');
+  if(G._blockCpuEvents){
+    G.evtPC=0;G.evtCC=0;
+    if(G.cpuPlay.some(c=>c.type.startsWith('event_')))
+      await showEventMsg('\u{1F6AB} Eventos CPU bloqueados!','Tu habilidad anula los eventos rivales');
   }
-  let activePlayerEvents=cHasVar?[]:pEvents.filter(e=>e.type!=='event_var');
-  let activeCpuEvents=pHasVar?[]:cEvents.filter(e=>e.type!=='event_var');
-  // Block events via team abilities
-  if(G._blockPlayerEvents){activePlayerEvents=[];if(pEvents.length>0)await showEventMsg('\u{1F6AB} Eventos bloqueados!','La habilidad rival anula tus eventos')}
-  if(G._blockCpuEvents){activeCpuEvents=[];if(cEvents.length>0)await showEventMsg('\u{1F6AB} Eventos CPU bloqueados!','Tu habilidad anula los eventos rivales')}
-  const pEpicMult=(G.epicMode&&G.epicMode.who==='player')?2:1;
-  const cEpicMult=(G.epicMode&&G.epicMode.who==='cpu')?2:1;
-  // Formation 5-4-1 reduces incoming event effects by 50%
-  const pDefense=getFormationEventReduction(G.cpuFormation); // CPU's defense reduces player events effect
-  const cDefense=getFormationEventReduction(G.playerFormation); // Player's defense reduces CPU events effect
-  activePlayerEvents.forEach(e=>{
-    if(e.type==='event_yellow')cScore=Math.max(0,cScore-Math.round(15*pEpicMult*pDefense));
-    if(e.type==='event_red'){const penalty=Math.min(Math.floor(cScore*0.3*pEpicMult*pDefense),Math.round(40*pEpicMult*pDefense));cScore=Math.max(0,cScore-penalty)}
-    if(e.type==='event_talk')pScore+=G.playerPlay.filter(c=>c.type==='player'||c.type==='legend').length*5*pEpicMult;
-  });
-  activeCpuEvents.forEach(e=>{
-    if(e.type==='event_yellow')pScore=Math.max(0,pScore-Math.round(15*cEpicMult*cDefense));
-    if(e.type==='event_red'){const penalty=Math.min(Math.floor(pScore*0.3*cEpicMult*cDefense),Math.round(40*cEpicMult*cDefense));pScore=Math.max(0,pScore-penalty)}
-    if(e.type==='event_talk')cScore+=G.cpuPlay.filter(c=>c.type==='player'||c.type==='legend').length*5*cEpicMult;
-  });
+  pScore+=G.evtPP+G.evtPC;
+  cScore+=G.evtCP+G.evtCC;
   pScore=Math.max(0,pScore);cScore=Math.max(0,cScore);
   // Apply formation bonuses to base score
   pScore=applyFormationToScore(pScore,G.playerPlay,G.playerFormation);
@@ -826,6 +916,8 @@ async function resolveBaza(){
   if(matchState==='player'||matchState==='cpu'||matchState==='draw'){
     endGame(matchState);return;
   }
+  // Loser picks first in draft
+  G.draftFirst=result==='win'?'cpu':'player';
   // Draw phase
   await drawPhase();
   saveGame();
@@ -1023,40 +1115,64 @@ async function drawPhase(){
   const totalNeed=playerNeed+cpuNeed;
   if(totalNeed<=0||G.deck.length===0)return;
 
-  // Draft: reveal cards for player to pick
   const available=[];
-  const revealCount=Math.min(totalNeed+2,G.deck.length); // Show a few extra choices
+  const revealCount=Math.min(totalNeed+2,G.deck.length);
   for(let i=0;i<revealCount;i++)available.push(G.deck.pop());
 
   let pickedCards=[];
-  if(playerNeed>0&&available.length>0){
-    const pickCount=Math.min(playerNeed,available.length);
-    pickedCards=await showDraftOverlay(available,pickCount);
-    pickedCards.forEach(c=>G.playerHand.push(c));
-    // Remove picked from available
-    const pickedIds=new Set(pickedCards.map(c=>c.id));
-    const remaining=available.filter(c=>!pickedIds.has(c.id));
-    // CPU picks best from remaining
-    const cpuPickCount=Math.min(cpuNeed,remaining.length);
-    const cpuPicks=remaining.sort((a,b)=>(b.rating||0)-(a.rating||0)).slice(0,cpuPickCount);
-    cpuPicks.forEach(c=>G.cpuHand.push(c));
-    // Return unpicked to deck
-    const allPicked=new Set([...pickedIds,...cpuPicks.map(c=>c.id)]);
-    remaining.filter(c=>!allPicked.has(c.id)).forEach(c=>G.deck.push(c));
+  if(G.draftFirst==='cpu'){
+    // CPU lost: picks first as consolation
+    if(cpuNeed>0){
+      const cpuPickCount=Math.min(cpuNeed,available.length);
+      const sorted=[...available].sort((a,b)=>(b.rating||0)-(a.rating||0));
+      const cpuPicks=sorted.slice(0,cpuPickCount);
+      cpuPicks.forEach(c=>G.cpuHand.push(c));
+      const cpuIds=new Set(cpuPicks.map(c=>c.id));
+      const remaining=available.filter(c=>!cpuIds.has(c.id));
+      if(playerNeed>0&&remaining.length>0){
+        await showEventMsg('\u{1F4E6} CPU ficha primero','Perdio la baza y elige antes');
+        const pickCount=Math.min(playerNeed,remaining.length);
+        pickedCards=await showDraftOverlay(remaining,pickCount);
+        pickedCards.forEach(c=>G.playerHand.push(c));
+        const pIds=new Set(pickedCards.map(c=>c.id));
+        remaining.filter(c=>!pIds.has(c.id)).forEach(c=>G.deck.push(c));
+      }else{
+        remaining.forEach(c=>G.deck.push(c));
+      }
+    }else if(playerNeed>0){
+      const pickCount=Math.min(playerNeed,available.length);
+      pickedCards=await showDraftOverlay(available,pickCount);
+      pickedCards.forEach(c=>G.playerHand.push(c));
+      const pIds=new Set(pickedCards.map(c=>c.id));
+      available.filter(c=>!pIds.has(c.id)).forEach(c=>G.deck.push(c));
+    }
     shuffle(G.deck);
   }else{
-    // Only CPU needs cards
-    const cpuPickCount=Math.min(cpuNeed,available.length);
-    const cpuPicks=available.slice(0,cpuPickCount);
-    cpuPicks.forEach(c=>G.cpuHand.push(c));
-    available.slice(cpuPickCount).forEach(c=>G.deck.push(c));
-    shuffle(G.deck);
+    // Player lost (or draw): picks first as consolation
+    if(playerNeed>0&&available.length>0){
+      const pickCount=Math.min(playerNeed,available.length);
+      pickedCards=await showDraftOverlay(available,pickCount);
+      pickedCards.forEach(c=>G.playerHand.push(c));
+      const pickedIds=new Set(pickedCards.map(c=>c.id));
+      const remaining=available.filter(c=>!pickedIds.has(c.id));
+      const cpuPickCount=Math.min(cpuNeed,remaining.length);
+      const cpuPicks=remaining.sort((a,b)=>(b.rating||0)-(a.rating||0)).slice(0,cpuPickCount);
+      cpuPicks.forEach(c=>G.cpuHand.push(c));
+      const allPicked=new Set([...pickedIds,...cpuPicks.map(c=>c.id)]);
+      remaining.filter(c=>!allPicked.has(c.id)).forEach(c=>G.deck.push(c));
+      shuffle(G.deck);
+    }else{
+      const cpuPickCount=Math.min(cpuNeed,available.length);
+      const cpuPicks=available.slice(0,cpuPickCount);
+      cpuPicks.forEach(c=>G.cpuHand.push(c));
+      available.slice(cpuPickCount).forEach(c=>G.deck.push(c));
+      shuffle(G.deck);
+    }
   }
 
   G.newCardIds=new Set(pickedCards.map(c=>c.id));
   renderGame();
   G.newCardIds=null;
-  // Handle overflow
   if(G.playerHand.length>playerMax)await playerDiscard(G.playerHand.length-playerMax);
   while(G.cpuHand.length>cpuMax){
     const worst=G.cpuHand.reduce((min,c,i)=>(!min||((c.rating||0)<(min.c.rating||0))?{c,i}:min),null);
@@ -1219,36 +1335,32 @@ function renderMatchInfo(){
   cForm.textContent=G.cpuFormation?G.cpuFormation.name:'';
 }
 
-function getPlayableIds(){
-  if(G.selected.size===0)return null;
-  const sel=[...G.selected].map(id=>G.playerHand.find(c=>c.id===id)).filter(Boolean);
-  const nonEvent=sel.filter(c=>!c.type.startsWith('event_'));
-  const ids=new Set();
-  if(nonEvent.length===0){
-    G.playerHand.forEach(c=>ids.add(c.id));
-  }else{
-    const team=nonEvent[0].team;
-    G.playerHand.forEach(c=>{
-      if(c.type.startsWith('event_')||c.team===team)ids.add(c.id);
-    });
-  }
-  return ids;
-}
-
 function renderHand(){
   const el=$('#player-hand');
-  const playable=getPlayableIds();
+  if(window._turnResolve){
+    const playable=getPlayableCardsBaza(G.playerHand,G.bazaTeam,G.playerPlay);
+    el.innerHTML=G.playerHand.map(c=>{
+      const html=cardHTML(c);
+      const isPlayable=playable.has(c.id);
+      const isSelected=window._turnSelected===c.id;
+      let extra=isSelected?' selected':isPlayable?'':' dimmed';
+      const click=isPlayable?`onclick="window._turnSelectCard(${c.id})" `:'';
+      return html.replace('class="card ','class="card'+extra+' ').replace('data-id=',click+'data-id=');
+    }).join('');
+    const btn=$('#btn-play');
+    btn.textContent=window._turnSelected!=null?'Confirmar':'Pasar';
+    btn.classList.remove('btn-disabled');
+    return;
+  }
   el.innerHTML=G.playerHand.map((c,i)=>{
     const html=cardHTML(c);
-    const sel=G.selected.has(c.id)?' selected':'';
-    let extra='';
-    if(!sel&&playable&&playable.has(c.id)){extra=' playable'}
     const isNew=G.newCardIds&&G.newCardIds.has(c.id);
+    let extra='';
     if(isNew)extra+=' card-draw-anim';
     const delay=isNew?` style="animation-delay:${i*0.08}s"`:'';
-    return html.replace('class="card ','class="card'+sel+extra+' ').replace('data-id=',`onclick="toggleSelect(${c.id})"${delay} data-id=`);
+    return html.replace('class="card ','class="card'+extra+' ').replace('data-id=',`${delay} data-id=`);
   }).join('');
-  updatePlayButton();
+  $('#btn-play').classList.add('btn-disabled');
 }
 
 function renderPlayerPlay(){

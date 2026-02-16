@@ -62,7 +62,9 @@
     <h3>Preparacion</h3>
     <p>Se reparten 6 cartas a cada jugador del mazo de 580 cartas.</p>
     <h3>Turno</h3>
-    <p>Cada jugador selecciona y juega cartas de su mano. Se comparan puntuaciones y el que mas tenga gana la baza.</p>
+    <p>Los turnos se alternan: juegas 1 carta, luego la CPU juega 1 carta. Puedes pasar en vez de jugar. La baza termina cuando ambos pasan consecutivamente.</p>
+    <h3>Restriccion de Equipo</h3>
+    <p>Una vez juegas una carta de equipo, solo puedes jugar mas cartas de ese mismo equipo + eventos. Escudo y Entrenador requieren al menos un jugador de su equipo ya en tu jugada.</p>
     <h3>Combos de Equipo</h3>
     <ul>
       <li>Juega varias cartas del MISMO equipo: sus valores se suman</li>
@@ -76,16 +78,39 @@
       <li><b>Leyenda</b> &#11088; - Jugador historico con alto valor</li>
     </ul>
     <h3>Cartas de Evento</h3>
+    <p>Los eventos se resuelven <b>inmediatamente</b> al jugar la carta, no al final de la baza. El timing importa!</p>
     <ul>
-      <li><b>Cambio de campo</b> &#128260; - Intercambia manos con el rival</li>
-      <li><b>Robo de balon</b> &#128400; - Roba 1 carta aleatoria del rival</li>
+      <li><b>Cambio de campo</b> &#128260; - Intercambia manos con el rival al instante</li>
+      <li><b>Robo de balon</b> &#128400; - Roba 1 carta aleatoria del rival al instante</li>
       <li><b>Tarjeta amarilla</b> &#129000; - Rival pierde 15 puntos en la baza</li>
-      <li><b>Tarjeta roja</b> &#129001; - -30% puntuacion rival (max -40 pts)</li>
-      <li><b>Charla del descanso</b> &#128172; - +5 puntos por cada jugador que juegues</li>
-      <li><b>VAR</b> &#128250; - Anula todos los eventos jugados por el rival</li>
+      <li><b>Tarjeta roja</b> &#129001; - -30% puntuacion rival actual (max -40 pts)</li>
+      <li><b>Charla del descanso</b> &#128172; - +5 puntos por cada jugador ya en tu jugada</li>
+      <li><b>VAR</b> &#128250; - Anula la &uacute;ltima carta jugada por el rival (la devuelve a su mano)</li>
     </ul>
     <h3>Habilidades de Equipo</h3>
-    <p>Juega <b>3 o mas jugadores</b> del mismo equipo para activar su habilidad pasiva unica. Cada equipo tiene un poder especial distinto.</p>
+    <p>Juega <b>3 o mas jugadores</b> del mismo equipo para activar su habilidad pasiva unica:</p>
+    <ul style="font-size:13px">
+      <li><b>Real Madrid</b> &mdash; Gal&aacute;cticos: +15 pts extra al combo</li>
+      <li><b>FC Barcelona</b> &mdash; Tiki-Taka: Roba 1 carta extra del mazo</li>
+      <li><b>Atl&eacute;tico de Madrid</b> &mdash; Cholismo: Rival no puede usar eventos esta baza</li>
+      <li><b>Athletic Club</b> &mdash; Garra: +5 pts por cada jugador en el combo</li>
+      <li><b>Real Betis</b> &mdash; Ingenio: Recupera 1 carta del descarte</li>
+      <li><b>Real Sociedad</b> &mdash; Txuri-urdin: +10 pts si juegas leyenda en combo</li>
+      <li><b>Villarreal CF</b> &mdash; Submarino: Protege del efecto del entrenador rival</li>
+      <li><b>Girona FC</b> &mdash; Resiliencia: +20 pts si vas perdiendo en score</li>
+      <li><b>Sevilla FC</b> &mdash; Nervi&oacute;n: -10 pts al rival por cada evento que juegues</li>
+      <li><b>RC Celta</b> &mdash; Celeste: +8 pts por carta de evento en tu jugada</li>
+      <li><b>CA Osasuna</b> &mdash; Rojillo: +3 pts por cada carta jugada (incluye eventos)</li>
+      <li><b>RCD Mallorca</b> &mdash; Bermellones: Duplica el bonus de victoria (+2 en vez de +1)</li>
+      <li><b>Rayo Vallecano</b> &mdash; Rayo: +12 pts si juegas exactamente 3 cartas</li>
+      <li><b>Getafe CF</b> &mdash; Azul&oacute;n: Entrenador elimina las 2 mejores cartas rivales</li>
+      <li><b>Deportivo Alav&eacute;s</b> &mdash; Babazorro: +6 pts por jugador con rating &lt;78</li>
+      <li><b>RCD Espanyol</b> &mdash; Pericos: Escudo protege de eventos rivales adem&aacute;s de x2</li>
+      <li><b>Real Valladolid</b> &mdash; Pucela: +25 pts si solo juegas 1 jugador (apuesta solitaria)</li>
+      <li><b>UD Las Palmas</b> &mdash; Canarios: Ves 1 carta de la mano rival antes de jugar</li>
+      <li><b>CD Legan&eacute;s</b> &mdash; Pepineros: +10 pts si el rival jug&oacute; m&aacute;s cartas que t&uacute;</li>
+      <li><b>Valencia CF</b> &mdash; Che: +8 pts por cada tipo distinto de carta en tu jugada</li>
+    </ul>
     <h3>Modo Epico</h3>
     <p>Si vas perdiendo por 200+ puntos o 4+ bazas, entra el <b>Modo Epico</b>: +10 pts por jugador y eventos con efecto doble durante 3 bazas.</p>
     <h3>Fin de Baza</h3>
@@ -109,7 +134,7 @@
       <li><b>Penaltis</b>: si sigue empate, 5 rondas de 1 carta cada uno</li>
     </ul>
     <h3>Mercado de Fichajes</h3>
-    <p>Tras cada baza, en vez de robar a ciegas, eliges cartas de un mercado abierto.</p>
+    <p>Tras cada baza, en vez de robar a ciegas, eliges cartas de un mercado abierto. El <b>perdedor de la baza elige primero</b> como consolacion.</p>
     <h3>Puntuacion</h3>
     <p>Se suman los valores de las cartas jugadas. El ganador recibe +1 punto de bonificacion.</p>
   </div>
@@ -170,7 +195,7 @@
   </div>
   <div class="action-bar">
     <button class="btn btn-secondary" onclick="showGameMenu()" style="max-width:60px;font-size:16px">&#9776;</button>
-    <button class="btn btn-primary btn-disabled" id="btn-play" onclick="playSelected()">Jugar</button>
+    <button class="btn btn-primary btn-disabled" id="btn-play">Pasar</button>
   </div>
 </div>
 
